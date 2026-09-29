@@ -1,0 +1,44 @@
+@import 'tailwindcss';
+
+/* SIMU design tokens — control-room palette (spec §7.1). Dark by default. */
+@theme {
+  --color-base: #0f1419;
+  --color-surface: #161b22;
+  --color-surface-2: #1c232c;
+  --color-line: #2a3139;
+  --color-fg: #e6edf3;
+  --color-fg-muted: #8b949e;
+  --color-accent: #1f6feb;
+  --color-ok: #2ea043;
+  --color-warn: #d29922;
+  --color-danger: #da3633;
+  --color-critical: #f85149;
+
+  --font-sans: 'IBM Plex Sans', system-ui, sans-serif;
+  --font-mono: 'IBM Plex Mono', ui-monospace, 'SFMono-Regular', monospace;
+
+  --radius-sm: 2px;
+  --radius-md: 3px;
+}
+
+@layer base {
+  html,
+  body,
+  #root {
+    height: 100%;
+  }
+
+  body {
+    background-color: var(--color-base);
+    color: var(--color-fg);
+    font-family: var(--font-sans);
+    font-size: 13px;
+    line-height: 1.4;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  :focus-visible {
+    outline: 1px solid var(--color-accent);
+    outline-offset: 1px;
+  }
+}
