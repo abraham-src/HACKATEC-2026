@@ -34,6 +34,27 @@ npm run dev:simulator                  # http://localhost:4000
 
 Si ya tienes un Postgres local ocupando el 5432, cambia `POSTGRES_PORT` y `DATABASE_URL` en `.env`.
 
+## Opción C: Windows sin Docker
+
+Probado en Windows 11 con Node 24 LTS, PostgreSQL 16.15 y PostGIS 3.6.2.
+
+1. Instala Node y PostgreSQL. `superpassword` es la contraseña del usuario `postgres` y solo aplica a tu máquina:
+   ```powershell
+   winget install --id OpenJS.NodeJS.LTS --exact
+   winget install --id PostgreSQL.PostgreSQL.16 --exact --override "--mode unattended --unattendedmodeui none --superpassword <tu-clave> --serverport 5432 --disable-components stackbuilder"
+   ```
+2. Instala PostGIS. Descarga `postgis-bundle-pg16-*x64.zip` de https://download.osgeo.org/postgis/windows/pg16/ y copia sus carpetas `bin`, `lib`, `share` y `gdal-data` dentro de `C:\Program Files\PostgreSQL\16`. Si algunas DLL están en uso, se pueden omitir porque PostgreSQL ya trae las suyas.
+3. Crea el usuario, la base y la extensión como `postgres`:
+   ```sql
+   CREATE USER simu WITH PASSWORD 'simu_dev_password';
+   CREATE DATABASE simu OWNER simu;
+   \c simu
+   CREATE EXTENSION postgis;
+   ```
+4. Sigue los pasos de la Opción B desde `npm install`, sin el comando de Docker.
+
+`package.json` incluye `allowScripts` para Prisma y esbuild. npm 11 o superior no ejecuta scripts de instalación sin esa aprobación, y sin ellos Prisma no descarga su motor.
+
 ## Calidad
 
 ```bash
