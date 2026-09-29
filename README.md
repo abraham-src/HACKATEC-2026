@@ -17,8 +17,8 @@ Esta entrega funciona **solo con datos simulados**: no requiere hardware ni el s
 ## Arranque rápido
 
 ```bash
-git clone <repo>
-cd simu
+git clone https://github.com/abraham-src/HACKATEC-2026.git
+cd HACKATEC-2026
 cp .env.example .env
 docker compose up --build
 ```
