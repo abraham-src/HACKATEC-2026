@@ -15,13 +15,15 @@ ENV NPM_CONFIG_UPDATE_NOTIFIER=false \
 WORKDIR /app
 
 # 1) Dependencies (cached while package manifests do not change).
-COPY package.json package-lock.json* tsconfig.base.json ./
+COPY package.json package-lock.json tsconfig.base.json ./
 COPY packages/shared-types/package.json packages/shared-types/
 COPY packages/shared-utils/package.json packages/shared-utils/
 COPY apps/api/package.json apps/api/
 COPY apps/simulator/package.json apps/simulator/
 COPY apps/web/package.json apps/web/
-RUN if [ -f package-lock.json ]; then npm ci; else npm install; fi
+# Only this service's workspaces (no SQLite, no Vite in this image).
+RUN npm ci --include-workspace-root \
+      --workspace @simu/shared-types --workspace @simu/shared-utils --workspace @simu/api
 
 # 2) Sources + build.
 COPY packages ./packages

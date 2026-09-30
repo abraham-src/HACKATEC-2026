@@ -1,50 +1,105 @@
-import type { HealthResponse } from '@simu/shared-types';
 import Fastify from 'fastify';
+import { ApiClient, Connectivity } from './api-client.js';
 import { loadConfig } from './config.js';
+import { controlRoutes } from './control.js';
+import { ScenarioRunner } from './scenarios.js';
+import { Simulation } from './simulation.js';
+import { Outbox } from './store.js';
+import { SyncWorker } from './sync.js';
 
 /**
- * Phase 1: process skeleton — config, health endpoint and API reachability probe.
- * Phase 4 adds the drain/camera emitters, SQLite store-and-forward and /control.
+ * SIMU field simulator: replicates the Arduino drains, the Ray-Ban Meta cameras and the
+ * laptop gateway (store-and-forward in SQLite). Everything it produces goes through the
+ * local outbox first, exactly like the real gateway will.
  */
 const config = loadConfig();
 const app = Fastify({ logger: { level: config.LOG_LEVEL } });
+// Control actions like POST /control/reset carry no body; accept them from any client
+// (curl, PowerShell) regardless of the Content-Type it sends. JSON is still parsed.
+app.addContentTypeParser('*', (_req, _payload, done) => done(null, undefined));
 
-let apiReachable = false;
-let lastApiCheck: string | null = null;
+const outbox = new Outbox(config.SIMULATOR_DB_PATH);
+const connectivity = new Connectivity();
+const api = new ApiClient(config.SIMULATOR_API_URL, config.DEVICE_INGEST_KEY, connectivity);
+const sync = new SyncWorker(
+  outbox,
+  api.ingest,
+  {
+    batchSize: config.SYNC_BATCH_SIZE,
+    intervalMs: config.SYNC_INTERVAL_MS,
+    backoffBaseMs: config.SYNC_BACKOFF_BASE_MS,
+    backoffMaxMs: config.SYNC_BACKOFF_MAX_MS,
+    lateAfterMs: 15_000,
+  },
+  app.log,
+);
+const sim = new Simulation(outbox);
+const runner = new ScenarioRunner({ sim, connectivity, sync });
 
-async function probeApi(): Promise<void> {
-  try {
-    const res = await fetch(new URL('/health', config.SIMULATOR_API_URL), {
-      signal: AbortSignal.timeout(3000),
-    });
-    const body = (await res.json()) as HealthResponse;
-    apiReachable = res.ok && body.status === 'ok';
-  } catch {
-    apiReachable = false;
-  }
-  lastApiCheck = new Date().toISOString();
+const pendingAtBoot = outbox.stats().pending;
+if (pendingAtBoot > 0) {
+  app.log.info({ pending: pendingAtBoot }, 'pending events from a previous run will be synced');
+  sim.record(`Arranque: ${pendingAtBoot} eventos pendientes de la ejecución anterior`);
 }
 
 app.get('/health', async () => ({
   status: 'ok',
   service: 'simu-simulator',
   api_url: config.SIMULATOR_API_URL,
-  api_reachable: apiReachable,
-  last_api_check: lastApiCheck,
+  api_reachable: await api.isApiHealthy(),
+  internet_online: connectivity.isOnline(),
+  outbox: outbox.stats(),
+  emitting: timers.length > 0,
   ts: new Date().toISOString(),
 }));
+await app.register(
+  controlRoutes({ sim, connectivity, sync, outbox, runner, api, apiUrl: config.SIMULATOR_API_URL }),
+);
 
-const probeTimer = setInterval(() => void probeApi(), 10_000);
+const timers: NodeJS.Timeout[] = [];
+function every(ms: number, fn: () => void): void {
+  timers.push(setInterval(fn, ms));
+}
 
+function startEmitters(): void {
+  // Announce every device and the current weather right away, then on schedule.
+  sim.sendHeartbeats();
+  sim.sendWeather();
+  sim.sampleDrains();
+  every(config.READING_INTERVAL_MS, () => sim.sampleDrains());
+  every(config.HEARTBEAT_INTERVAL_MS, () => sim.sendHeartbeats());
+  every(config.CAMERA_INTERVAL_MS, () =>
+    sim.maybeRandomDetection(config.CAMERA_RANDOM_PROBABILITY),
+  );
+  every(config.WEATHER_INTERVAL_MS, () => sim.sendWeather());
+  // Keep the SQLite file bounded: synced rows older than 1 h are deleted.
+  every(10 * 60_000, () => outbox.purgeSynced(3600_000));
+  sim.record('Emisión iniciada: lecturas cada 5 s, heartbeats cada 30 s');
+}
+
+sync.start();
+if (config.SIMULATOR_AUTOSTART) startEmitters();
+
+let shuttingDown = false;
 async function shutdown(signal: NodeJS.Signals): Promise<void> {
-  app.log.info({ signal }, 'shutting down');
-  clearInterval(probeTimer);
+  if (shuttingDown) return;
+  shuttingDown = true;
+  app.log.info(
+    { signal, pending: outbox.stats().pending },
+    'shutting down (pending events stay in SQLite)',
+  );
+  for (const t of timers) clearInterval(t);
+  runner.cancel();
+  sync.stop();
   await app.close();
+  outbox.close();
   process.exit(0);
 }
 process.once('SIGINT', (s) => void shutdown(s));
 process.once('SIGTERM', (s) => void shutdown(s));
 
 await app.listen({ host: config.SIMULATOR_HOST, port: config.SIMULATOR_PORT });
-await probeApi();
-app.log.info({ apiReachable, api: config.SIMULATOR_API_URL }, 'initial API probe');
+app.log.info(
+  { api: config.SIMULATOR_API_URL, db: config.SIMULATOR_DB_PATH, control: `/control` },
+  'simulator ready',
+);

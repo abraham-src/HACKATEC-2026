@@ -66,6 +66,12 @@ En Docker, `web` es nginx: sirve el SPA y hace proxy de `/api/*` y `/ws` hacia `
 
 **Monitor de heartbeats en la API.** Es un `setInterval` en el proceso de la API, que no se superpone consigo mismo. Su `UPDATE` vuelve a comprobar el corte, así que un heartbeat que llega durante el barrido gana. Con varias instancias de la API bastaría con que una sola lo ejecute, o con un lock de Postgres.
 
+**Simulador como gateway real.** El simulador sigue el mismo camino que el hardware. Genera la línea serial del Arduino (`DRAIN001,78`), la convierte con el mismo parser (`serialLineToDrainReading`) y escribe primero en SQLite. Ningún emisor habla con la red: solo el `SyncWorker` lo hace. Así, cambiar el simulador por el gateway real es cambiar la fuente de las lecturas, no la lógica de envío.
+
+**Outbox en SQLite (better-sqlite3).** Es síncrono y transaccional, usa WAL para que escribir no bloquee al worker y sobrevive a reinicios. Los rechazos definitivos de la API van a una "dead letter" y no bloquean la cola. Un 400 sobre un lote hace que se reintente elemento por elemento, para aislar el evento inválido. Las filas sincronizadas se purgan después de una hora.
+
+**Panel del simulador detrás del proxy.** El simulador no publica puerto, como pide la especificación. Su panel se sirve en `/simulator/` desde nginx o Vite, en el mismo origen que la web.
+
 ## Tolerancia a fallos (resumen)
 
 | Falla                          | Comportamiento                                                         | Fase  |
@@ -82,7 +88,7 @@ En Docker, `web` es nginx: sirve el SPA y hace proxy de `/api/*` y `/ws` hacia `
 | 1    | Monorepo, Docker Compose, PostGIS, Prisma, esquema, seeds        | Hecha     |
 | 2    | Auth JWT, roles, CRUD devices/incidents/accessibility, WebSocket | Hecha     |
 | 3    | Motor de reglas, ingesta, heartbeat monitor                      | Hecha     |
-| 4    | Simulador con SQLite store-and-forward y panel de control        | Pendiente |
+| 4    | Simulador con SQLite store-and-forward y panel de control        | Hecha     |
 | 5    | Frontend: layout, login, dashboard                               | Pendiente |
 | 6    | Mapa MapLibre + edificios 3D + 12 capas                          | Pendiente |
 | 7    | Panel de incidencias + timeline en vivo                          | Pendiente |

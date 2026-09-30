@@ -81,6 +81,7 @@ services:
       SIMULATOR_HOST: 0.0.0.0
       SIMULATOR_PORT: 4000
       SIMULATOR_API_URL: http://api:3000
+      SIMULATOR_DB_PATH: /data/simu-gateway.db
       DEVICE_INGEST_KEY: ${DEVICE_INGEST_KEY:?Define DEVICE_INGEST_KEY en .env}
       LOG_LEVEL: ${LOG_LEVEL:-info}
     # Internal only (spec §2.3). The /control panel is exposed in Phase 4.

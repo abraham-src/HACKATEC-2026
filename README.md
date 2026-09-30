@@ -27,13 +27,13 @@ docker compose up --build
 
 El primer arranque tarda unos minutos: instala dependencias, compila, aplica migraciones y carga seeds.
 
-| Servicio             | URL                          | Notas                                 |
-| -------------------- | ---------------------------- | ------------------------------------- |
-| Web                  | http://localhost:5173        | nginx; proxya `/api` y `/ws` a la API |
-| API                  | http://localhost:3000/health | Fastify                               |
-| PostgreSQL + PostGIS | `localhost:5432`             | usuario/clave en `.env`               |
-| Simulador            | interno, puerto 4000         | sin puerto publicado                  |
-| IA (opcional)        | interno, puerto 8000         | `docker compose --profile ai up`      |
+| Servicio             | URL                                     | Notas                                   |
+| -------------------- | --------------------------------------- | --------------------------------------- |
+| Web                  | http://localhost:5173                   | nginx; proxya `/api` y `/ws` a la API   |
+| API                  | http://localhost:3000/health            | Fastify                                 |
+| PostgreSQL + PostGIS | `localhost:5432`                        | usuario/clave en `.env`                 |
+| Simulador            | http://localhost:5173/simulator/control | panel de control vía el proxy de la web |
+| IA (opcional)        | interno, puerto 8000                    | `docker compose --profile ai up`        |
 
 ### Verificar la Fase 1
 
@@ -109,6 +109,41 @@ HACKATEC-2026/
 ├── docs/               Documentación interna (español)
 └── compose.yaml        Punto de entrada: incluye docker/docker-compose.yml
 ```
+
+## Simulador de campo
+
+El simulador reemplaza al hardware en la demo. Arranca solo con `docker compose up`, o con `npm run dev:simulator` sin Docker, y hace esto:
+
+- **Coladeras.** DRAIN-001 a DRAIN-004 envían una lectura cada 5 s en el formato serial del Arduino (`DRAIN001,78`). El gateway la convierte a JSON.
+- **Cámaras.** CAM-001 a CAM-004 reportan detecciones con confianza aleatoria. La mayoría queda debajo del umbral de 0.6.
+- **Heartbeats.** Los 11 dispositivos envían uno cada 30 s.
+- **Store-and-forward.** Todo se guarda primero en SQLite (`simu-gateway.db`) y un worker lo envía a `POST /events/ingest`. Si falla, reintenta con backoff exponencial de 1 s a 60 s. Al arrancar envía lo que quedó pendiente.
+
+### Panel de control
+
+Abre **http://localhost:5173/simulator/control**. Desde ahí puedes:
+
+- Cortar Internet durante X segundos y restablecerlo.
+- Fijar el nivel de cualquier coladera, por ejemplo DRAIN-001 = 88 %.
+- Enviar una detección de cualquier cámara, por ejemplo CAM-001 = WATER_ACCUMULATION u OBSTACLE.
+- Activar lluvia por zona y reportar un dispositivo como DEGRADED.
+- Ejecutar los 6 escenarios de demo con un botón.
+- Reiniciar el estado.
+
+El panel muestra en vivo los pendientes en SQLite, las fallas consecutivas, el próximo reintento y una bitácora.
+
+Los mismos controles existen como REST: `POST /control/internet`, `/control/drain`, `/control/camera`, `/control/weather`, `/control/health`, `/control/scenario/:id` y `/control/reset`. El panel no tiene autenticación porque es una herramienta interna de demo: no lo expongas a Internet.
+
+### Escenarios de demo
+
+| #   | Escenario                 | Qué pasa                                                                                                  |
+| --- | ------------------------- | --------------------------------------------------------------------------------------------------------- |
+| 1   | Operación normal          | Niveles habituales, sin lluvia, todo en línea                                                             |
+| 2   | Coladera obstruyéndose    | DRAIN-001 pasa por 42 %, 71 % y 88 %, y el motor emite ALERTA                                             |
+| 3   | Cámara detecta incidencia | CAM-001 detecta un obstáculo y aparece como incidencia en vivo                                            |
+| 4   | Riesgo combinado          | 88 %, lluvia y agua detectada elevan la incidencia a RIESGO CRÍTICO                                       |
+| 5   | Accesibilidad             | CAM-001 detecta un bloqueo sobre la ruta accesible. La ruta alternativa llega en la Fase 8                |
+| 6   | Pérdida de conectividad   | 100 s sin Internet: se acumula en SQLite, los dispositivos pasan a OFFLINE y todo se sincroniza al volver |
 
 ## Comandos frecuentes
 

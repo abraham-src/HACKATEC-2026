@@ -18,6 +18,11 @@ export default defineConfig({
         target: 'ws://localhost:3000',
         ws: true,
       },
+      // Simulator control panel (internal service), same path as nginx in Docker.
+      '/simulator': {
+        target: 'http://localhost:4000',
+        rewrite: (path) => path.replace(/^\/simulator/, ''),
+      },
     },
   },
 });
