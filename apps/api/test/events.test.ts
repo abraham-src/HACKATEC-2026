@@ -121,7 +121,14 @@ describe.skipIf(!hasTestDb)('POST /events/ingest (store-and-forward batch)', () 
     ]);
     expect(res.statusCode).toBe(200);
     const body = res.json<IngestResult>();
-    expect(body).toMatchObject({ received: 6, accepted: 4, stale: 1, rejected: 1, duplicates: 0 });
+    expect(body).toMatchObject({
+      received: 6,
+      accepted: 4,
+      stale: 1,
+      rejected: 1,
+      failed: 0,
+      duplicates: 0,
+    });
     expect(body.results.map((r) => r.status)).toEqual([
       'accepted',
       'accepted',

@@ -21,6 +21,7 @@ function fakeApi() {
   const received: IngestEvent[][] = [];
   let mode: 'ok' | 'down' | 'http500' | 'http400' = 'ok';
   const rejectIndex = new Set<number>();
+  const failIndex = new Set<number>();
   const send: IngestSender = async (events) => {
     if (mode === 'down') throw new NetworkDownError();
     if (mode === 'http500') throw new HttpError(503, 'API respondió 503');
@@ -32,10 +33,18 @@ function fakeApi() {
       duplicates: 0,
       stale: 0,
       rejected: 0,
+      failed: 0,
       results: events.map((e, index) =>
         rejectIndex.has(index)
           ? { index, type: e.type, status: 'rejected', error: 'Dispositivo inexistente' }
-          : { index, type: e.type, status: 'accepted' },
+          : failIndex.has(index)
+            ? {
+                index,
+                type: e.type,
+                status: 'failed',
+                error: 'Error interno al procesar el evento',
+              }
+            : { index, type: e.type, status: 'accepted' },
       ),
     };
     return result;
@@ -45,6 +54,7 @@ function fakeApi() {
     received,
     setMode: (m: typeof mode) => (mode = m),
     rejectIndex,
+    failIndex,
   };
 }
 
@@ -190,6 +200,24 @@ describe('SyncWorker (store-and-forward)', () => {
     box.enqueue(reading(3, new Date(now).toISOString()), new Date(now));
     await worker(api.send).runOnce();
     expect(box.stats()).toMatchObject({ pending: 0, synced: 2, dead: 1 });
+  });
+
+  it('keeps items that failed on the server pending and retries them with backoff', async () => {
+    const api = fakeApi();
+    api.failIndex.add(1);
+    box.enqueue(reading(1, new Date(now).toISOString()), new Date(now));
+    box.enqueue(reading(2, new Date(now).toISOString()), new Date(now));
+    const w = worker(api.send);
+
+    expect(await w.runOnce()).toBe('failed');
+    expect(box.stats()).toMatchObject({ pending: 1, synced: 1, dead: 0 });
+    expect(w.getStatus().consecutiveFailures).toBe(1);
+
+    api.failIndex.clear();
+    expect(await w.runOnce()).toBe('synced');
+    expect(box.stats()).toMatchObject({ pending: 0, synced: 2, dead: 0 });
+    // The retried item is flagged as late: it did not arrive on time.
+    expect((api.received[1]?.[0] as { synced?: boolean }).synced).toBe(false);
   });
 
   it('isolates a poison item when the API rejects the whole batch with 400', async () => {

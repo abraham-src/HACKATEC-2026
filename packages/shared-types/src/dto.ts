@@ -329,7 +329,11 @@ export type IngestEvent =
       recorded_at?: string;
     };
 
-export type IngestItemStatus = 'accepted' | 'duplicate' | 'stale' | 'rejected';
+/**
+ * Per-event ingest outcome. `rejected` is permanent (invalid event: the gateway
+ * dead-letters it). `failed` is a server-side error: the gateway keeps it and retries.
+ */
+export type IngestItemStatus = 'accepted' | 'duplicate' | 'stale' | 'rejected' | 'failed';
 
 export interface IngestResult {
   received: number;
@@ -337,6 +341,7 @@ export interface IngestResult {
   duplicates: number;
   stale: number;
   rejected: number;
+  failed: number;
   results: Array<{ index: number; type: string; status: IngestItemStatus; error?: string }>;
 }
 

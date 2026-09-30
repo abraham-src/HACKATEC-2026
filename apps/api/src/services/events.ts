@@ -340,9 +340,19 @@ export async function ingestBatch(
       const status = await ingestOne(ctx, event);
       results.push({ index, type: event.type, status });
     } catch (err) {
-      const message = err instanceof AppError ? err.message : 'Error interno al procesar el evento';
-      if (!(err instanceof AppError)) ctx.log.error({ err, index }, 'ingest item failed');
-      results.push({ index, type: event.type, status: 'rejected', error: message });
+      // Invalid events are rejected for good; anything else (database down, a bug) is
+      // reported as `failed` so the gateway keeps the event and retries it later.
+      if (err instanceof AppError && err.statusCode < 500) {
+        results.push({ index, type: event.type, status: 'rejected', error: err.message });
+      } else {
+        ctx.log.error({ err, index }, 'ingest item failed');
+        results.push({
+          index,
+          type: event.type,
+          status: 'failed',
+          error: 'Error interno al procesar el evento',
+        });
+      }
     }
   }
   results.sort((a, b) => a.index - b.index);
@@ -354,6 +364,7 @@ export async function ingestBatch(
     duplicates: count('duplicate'),
     stale: count('stale'),
     rejected: count('rejected'),
+    failed: count('failed'),
     results,
   };
 }

@@ -4,7 +4,7 @@ Sistema Inteligente de Monitoreo Urbano para la Ciudad de México. Integra cáma
 
 Esta entrega funciona **solo con datos simulados**: no requiere hardware ni el servicio de IA real.
 
-> **Estado:** Fase 10 de 11. Todas las vistas de la especificación están listas: login, dashboard, mapa 3D con 12 capas, incidencias, mantenimiento, accesibilidad, dispositivos, reglas, usuarios y logs. También están los estados de error y sin conexión. Faltan las pruebas E2E con la documentación final (Fase 11). Plan completo en [docs/arquitectura.md](docs/arquitectura.md#plan-de-fases).
+> **Estado:** completo, fases 1 a 11. Incluye todas las vistas de la especificación: login, dashboard, mapa 3D con 12 capas, incidencias, mantenimiento, accesibilidad, dispositivos, reglas, usuarios y logs. También están los estados de error y sin conexión, y hay pruebas E2E de los 6 escenarios de demo. Guion de la demo en [docs/escenarios-demo.md](docs/escenarios-demo.md).
 
 Sin Docker en Windows: ver [docs/desarrollo.md](docs/desarrollo.md#opción-c-windows-sin-docker).
 
@@ -35,7 +35,7 @@ El primer arranque tarda unos minutos: instala dependencias, compila, aplica mig
 | Simulador            | http://localhost:5173/simulator/control | panel de control vía el proxy de la web |
 | IA (opcional)        | interno, puerto 8000                    | `docker compose --profile ai up`        |
 
-### Verificar la Fase 1
+### Verificar la instalación
 
 ```bash
 # Todos los servicios "running" / "healthy"
@@ -95,7 +95,7 @@ HACKATEC-2026/
 ├── apps/
 │   ├── web/            React 18 + Vite + TS + Tailwind
 │   ├── api/            Node 20 + Fastify + Prisma
-│   ├── simulator/      Simulador de Arduino + cámara (store-and-forward en Fase 4)
+│   ├── simulator/      Simulador de Arduino + cámara, store-and-forward en SQLite
 │   └── ai-service/     FastAPI; mock de POST /ai/analyze (perfil "ai")
 ├── packages/
 │   ├── shared-types/   Enums, DTOs y contratos WS compartidos
@@ -107,6 +107,7 @@ HACKATEC-2026/
 │   └── gis/            GeoJSON mock (zonas, riesgo de inundación)
 ├── docker/             Dockerfiles, compose, nginx, init-db.sql
 ├── docs/               Documentación interna (español)
+├── e2e/                Pruebas Playwright de los 6 escenarios
 └── compose.yaml        Punto de entrada: incluye docker/docker-compose.yml
 ```
 
@@ -136,14 +137,26 @@ Los mismos controles existen como REST: `POST /control/internet`, `/control/drai
 
 ### Escenarios de demo
 
-| #   | Escenario                 | Qué pasa                                                                                                                           |
-| --- | ------------------------- | ---------------------------------------------------------------------------------------------------------------------------------- |
-| 1   | Operación normal          | Niveles habituales, sin lluvia, todo en línea                                                                                      |
-| 2   | Coladera obstruyéndose    | DRAIN-001 pasa por 42 %, 71 % y 88 %, y el motor emite ALERTA                                                                      |
-| 3   | Cámara detecta incidencia | CAM-001 detecta un obstáculo y aparece como incidencia en vivo                                                                     |
-| 4   | Riesgo combinado          | 88 %, lluvia y agua detectada elevan la incidencia a RIESGO CRÍTICO                                                                |
-| 5   | Accesibilidad             | CAM-001 detecta un bloqueo en Álvaro Obregón y Orizaba. En **Accesibilidad**, la ruta se recalcula sola por Córdoba y usa la rampa |
-| 6   | Pérdida de conectividad   | 100 s sin Internet: se acumula en SQLite, los dispositivos pasan a OFFLINE y todo se sincroniza al volver                          |
+| #   | Escenario                 | Qué pasa                                                                                                                                                                   |
+| --- | ------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 1   | Operación normal          | Niveles habituales, sin lluvia, todo en línea                                                                                                                              |
+| 2   | Coladera obstruyéndose    | DRAIN-001 pasa por 42 %, 71 % y 88 %, y el motor emite ALERTA                                                                                                              |
+| 3   | Cámara detecta incidencia | CAM-001 detecta un obstáculo y aparece como incidencia en vivo                                                                                                             |
+| 4   | Riesgo combinado          | 88 %, lluvia y agua detectada elevan la incidencia a RIESGO CRÍTICO                                                                                                        |
+| 5   | Accesibilidad             | CAM-001 detecta un bloqueo en Álvaro Obregón y Orizaba. En **Accesibilidad**, la ruta se recalcula sola, lo suma a los obstáculos evitados y cruza por la rampa de Córdoba |
+| 6   | Pérdida de conectividad   | 100 s sin Internet: se acumula en SQLite, los dispositivos pasan a OFFLINE y todo se sincroniza al volver                                                                  |
+
+Paso a paso de cada escenario, con qué mostrar en cada vista: [docs/escenarios-demo.md](docs/escenarios-demo.md).
+
+## Pruebas
+
+```bash
+npm run typecheck && npm run lint   # TypeScript estricto y ESLint
+npm test                            # 227 pruebas unitarias y de integración (Vitest)
+npm run test:e2e                    # 9 pruebas E2E en Chromium: acceso y los 6 escenarios
+```
+
+Las pruebas de integración usan la base `simu_test` y las E2E usan `simu_e2e`. Ninguna toca la base de desarrollo. Preparación en [docs/desarrollo.md](docs/desarrollo.md#calidad).
 
 ## Comandos frecuentes
 
@@ -162,6 +175,7 @@ Desarrollo local sin Docker para la app: ver [docs/desarrollo.md](docs/desarroll
 - [Arquitectura](docs/arquitectura.md)
 - [Modelo de datos](docs/modelo-datos.md)
 - [API](docs/api.md)
+- [Escenarios de demo](docs/escenarios-demo.md)
 - [Desarrollo y contribución](docs/desarrollo.md)
 
 ## Licencia

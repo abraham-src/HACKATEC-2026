@@ -116,16 +116,16 @@ Detalles del frontend (Fase 10):
 
 ## Plan de fases
 
-| Fase | Alcance                                                          | Estado    |
-| ---- | ---------------------------------------------------------------- | --------- |
-| 1    | Monorepo, Docker Compose, PostGIS, Prisma, esquema, seeds        | Hecha     |
-| 2    | Auth JWT, roles, CRUD devices/incidents/accessibility, WebSocket | Hecha     |
-| 3    | Motor de reglas, ingesta, heartbeat monitor                      | Hecha     |
-| 4    | Simulador con SQLite store-and-forward y panel de control        | Hecha     |
-| 5    | Frontend: layout, login, dashboard                               | Hecha     |
-| 6    | Mapa MapLibre + edificios 3D + 12 capas                          | Hecha     |
-| 7    | Panel de incidencias + timeline en vivo                          | Hecha     |
-| 8    | Accesibilidad: rutas y alternativas                              | Hecha     |
-| 9    | Mantenimiento, reglas, usuarios, logs                            | Hecha     |
-| 10   | Pulido visual, estados de error, offline                         | Hecha     |
-| 11   | E2E Playwright de los 6 escenarios + documentación final         | Pendiente |
+| Fase | Alcance                                                          | Estado |
+| ---- | ---------------------------------------------------------------- | ------ |
+| 1    | Monorepo, Docker Compose, PostGIS, Prisma, esquema, seeds        | Hecha  |
+| 2    | Auth JWT, roles, CRUD devices/incidents/accessibility, WebSocket | Hecha  |
+| 3    | Motor de reglas, ingesta, heartbeat monitor                      | Hecha  |
+| 4    | Simulador con SQLite store-and-forward y panel de control        | Hecha  |
+| 5    | Frontend: layout, login, dashboard                               | Hecha  |
+| 6    | Mapa MapLibre + edificios 3D + 12 capas                          | Hecha  |
+| 7    | Panel de incidencias + timeline en vivo                          | Hecha  |
+| 8    | Accesibilidad: rutas y alternativas                              | Hecha  |
+| 9    | Mantenimiento, reglas, usuarios, logs                            | Hecha  |
+| 10   | Pulido visual, estados de error, offline                         | Hecha  |
+| 11   | E2E Playwright de los 6 escenarios + documentación final         | Hecha  |

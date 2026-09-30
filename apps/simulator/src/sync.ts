@@ -41,7 +41,7 @@ const CARRIES_SYNCED: ReadonlySet<IngestEvent['type']> = new Set([
 
 /**
  * Ships the outbox to the API (spec §6.1):
- * - FIFO batches; each item's own result decides synced / dead
+ * - FIFO batches; each item's own result decides synced / dead / retry
  * - network or server failure → items stay pending, retry with exponential backoff + jitter
  * - HTTP 400 on a batch → retry one item at a time to isolate the poison item
  */
@@ -116,18 +116,28 @@ export class SyncWorker {
     try {
       const result = await this.send(batch.map((i) => this.toWire(i)));
       const synced: number[] = [];
+      const retry: number[] = [];
+      let retryError = '';
       for (const r of result.results) {
         const item = batch[r.index];
         if (!item) continue;
         if (r.status === 'rejected') {
           this.outbox.markDead(item.id, r.error ?? 'rechazado por la API');
           this.status.totalDead += 1;
+        } else if (r.status === 'failed') {
+          // Server-side error on this event: keep it pending, never dead-letter it.
+          retry.push(item.id);
+          retryError = r.error ?? 'error del servidor';
         } else {
           synced.push(item.id); // accepted, duplicate (already stored) or stale (acknowledged)
         }
       }
       this.outbox.markSynced(synced);
       this.status.totalSent += synced.length;
+      if (retry.length > 0) {
+        this.outbox.markFailed(retry, retryError);
+        return this.backOff(retryError);
+      }
       this.status.consecutiveFailures = 0;
       this.status.lastError = null;
       this.status.lastSuccessAt = new Date(this.now()).toISOString();
@@ -151,17 +161,21 @@ export class SyncWorker {
           ? err.message
           : `Servidor no disponible: ${(err as Error).message}`;
       this.outbox.markFailed(ids, message);
-      this.status.consecutiveFailures += 1;
-      this.status.lastError = message;
-      this.status.lastFailureAt = new Date(this.now()).toISOString();
-      if (this.status.consecutiveFailures === 1) {
-        this.log?.warn(
-          { pending: this.outbox.stats().pending, error: message },
-          'sync failed, backing off',
-        );
-      }
-      return 'failed';
+      return this.backOff(message);
     }
+  }
+
+  private backOff(message: string): RunResult {
+    this.status.consecutiveFailures += 1;
+    this.status.lastError = message;
+    this.status.lastFailureAt = new Date(this.now()).toISOString();
+    if (this.status.consecutiveFailures === 1) {
+      this.log?.warn(
+        { pending: this.outbox.stats().pending, error: message },
+        'sync failed, backing off',
+      );
+    }
+    return 'failed';
   }
 
   start(): void {

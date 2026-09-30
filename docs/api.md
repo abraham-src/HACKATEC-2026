@@ -293,6 +293,7 @@ Se cargan en memoria al arrancar. Si un archivo falta o es inválido, la API no 
   "duplicates": 0,
   "stale": 0,
   "rejected": 0,
+  "failed": 0,
   "results": [{ "index": 0, "type": "drain_reading", "status": "accepted" }, "…"]
 }
 ```
@@ -300,7 +301,7 @@ Se cargan en memoria al arrancar. Si un archivo falta o es inválido, la API no 
 Reglas de procesamiento:
 
 - **Orden.** Los eventos se procesan en orden cronológico de `recorded_at`, no en el orden del arreglo.
-- **Resultado por evento.** Uno inválido, por ejemplo un dispositivo inexistente, queda `rejected` sin bloquear a los demás. Un payload mal formado responde 400 completo.
+- **Resultado por evento.** Uno inválido, por ejemplo un dispositivo inexistente, queda `rejected` sin bloquear a los demás, y el gateway lo manda a la cola de descartados. Si el error es del servidor (base de datos caída, un fallo inesperado), el evento queda `failed`: el gateway lo conserva y lo reintenta con backoff, así que no se pierde. Un payload mal formado responde 400 completo.
 - **Idempotencia.** Reenviar el mismo lote no duplica nada: responde `duplicate`. Las lecturas se deduplican por dispositivo y `recorded_at`. Las detecciones y el clima, por dispositivo, tipo y `recorded_at`.
 - **Datos atrasados.** Si no se envía `synced`, todo lo que llega con más de 60 s de retraso se guarda con `synced: false`.
 - **Heartbeats viejos.** Si tienen más de 90 s, responden `stale`: no prueban que el dispositivo siga vivo.

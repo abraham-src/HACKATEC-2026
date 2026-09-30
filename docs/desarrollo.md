@@ -61,7 +61,8 @@ Probado en Windows 11 con Node 24 LTS, PostgreSQL 16.15 y PostGIS 3.6.2.
 npm run typecheck   # TypeScript estricto en todos los workspaces + seeds
 npm run lint        # ESLint (flat config compartida en la raíz)
 npm run format      # Prettier
-npm test            # Vitest (shared-utils, api)
+npm test            # Vitest (shared-utils, api, simulator, web)
+npm run test:e2e    # Playwright: los 6 escenarios de demo en Chromium
 ```
 
 ### Pruebas de integración
@@ -81,6 +82,38 @@ TEST_DATABASE_URL=postgresql://simu:simu_dev_password@localhost:5432/simu_test?s
 ```
 
 Si `TEST_DATABASE_URL` no está definido, las pruebas de integración se omiten y solo corren las unitarias. La configuración rechaza que `TEST_DATABASE_URL` sea igual a `DATABASE_URL`, para no vaciar la base de desarrollo por accidente.
+
+### Pruebas E2E (Playwright)
+
+`e2e/` contiene las pruebas de punta a punta. `access.spec.ts` cubre login, roles y sesión. `scenarios.spec.ts` cubre los 6 escenarios de [escenarios-demo.md](escenarios-demo.md).
+
+Playwright levanta su propio stack aislado. No usa los servidores de desarrollo ni sus datos:
+
+| Pieza     | Puerto | Datos                                                          |
+| --------- | ------ | -------------------------------------------------------------- |
+| API       | 3100   | Base `simu_e2e`, heartbeat timeout de 20 s                     |
+| Simulador | 4100   | `apps/simulator/data/simu-gateway-e2e.db`, se borra al iniciar |
+| Web       | 5174   | Vite con el proxy apuntando a 3100 y 4100                      |
+
+Antes de la corrida se aplican las migraciones a `simu_e2e`. Antes de cada prueba se vacían las tablas, se recarga el seed y se reinicia el simulador. El simulador corre sin detecciones aleatorias de cámara, así que toda incidencia viene del escenario.
+
+Preparación, una sola vez:
+
+```sql
+-- como postgres
+CREATE DATABASE simu_e2e OWNER simu;
+\c simu_e2e
+CREATE EXTENSION postgis;
+```
+
+```bash
+npx playwright install chromium   # navegador de Playwright
+npm run test:e2e                  # ~4 min; el escenario 6 espera la caída real de 100 s
+npm run test:e2e -- -g "Riesgo"   # una sola prueba por nombre
+npm run test:e2e:report           # reporte HTML; las fallas incluyen traza y captura
+```
+
+La URL de la base se cambia con `E2E_DATABASE_URL`. Los secretos (JWT, llave de dispositivos, contraseña demo) se leen del `.env` de la raíz, igual que en desarrollo. El mapa se dibuja con WebGL por software (SwiftShader), así que no hace falta GPU.
 
 Reglas:
 
