@@ -1,10 +1,5 @@
 import type { Prisma } from '@prisma/client';
-import type {
-  IncidentPriority,
-  IncidentStatus,
-  IncidentType,
-  RoleName,
-} from '@simu/shared-types';
+import type { IncidentPriority, IncidentStatus, IncidentType, RoleName } from '@simu/shared-types';
 
 export interface IncidentSeed {
   key: string;
@@ -21,7 +16,11 @@ export interface IncidentSeed {
   /** How long ago the incident was created. */
   ageMinutes: number;
   metadata: Prisma.InputJsonObject;
-  events: ReadonlyArray<{ eventType: string; afterMinutes: number; payload: Prisma.InputJsonObject }>;
+  events: ReadonlyArray<{
+    eventType: string;
+    afterMinutes: number;
+    payload: Prisma.InputJsonObject;
+  }>;
 }
 
 /** Five example incidents, one per type (flood_risk and infrastructure_failure are produced live). */
@@ -39,7 +38,11 @@ export const INCIDENTS: readonly IncidentSeed[] = [
     ageMinutes: 95,
     metadata: { zone: 'ZONE-003', source: 'camera', camera_event: 'WATER_ACCUMULATION' },
     events: [
-      { eventType: 'created', afterMinutes: 0, payload: { source: 'camera', device: 'CAM-003', confidence: 0.81 } },
+      {
+        eventType: 'created',
+        afterMinutes: 0,
+        payload: { source: 'camera', device: 'CAM-003', confidence: 0.81 },
+      },
       { eventType: 'validated', afterMinutes: 6, payload: { by_role: 'operator' } },
     ],
   },
@@ -56,7 +59,11 @@ export const INCIDENTS: readonly IncidentSeed[] = [
     ageMinutes: 40,
     metadata: { zone: 'ZONE-002', source: 'sensor', obstruction_level: 64 },
     events: [
-      { eventType: 'created', afterMinutes: 0, payload: { source: 'sensor', device: 'DRAIN-002', value: 64 } },
+      {
+        eventType: 'created',
+        afterMinutes: 0,
+        payload: { source: 'sensor', device: 'DRAIN-002', value: 64 },
+      },
     ],
   },
   {
@@ -72,7 +79,11 @@ export const INCIDENTS: readonly IncidentSeed[] = [
     ageMinutes: 22,
     metadata: { zone: 'ZONE-002', source: 'camera', camera_event: 'ACCIDENT', lanes_blocked: 1 },
     events: [
-      { eventType: 'created', afterMinutes: 0, payload: { source: 'camera', device: 'CAM-002', confidence: 0.87 } },
+      {
+        eventType: 'created',
+        afterMinutes: 0,
+        payload: { source: 'camera', device: 'CAM-002', confidence: 0.87 },
+      },
       { eventType: 'validated', afterMinutes: 2, payload: { by_role: 'operator' } },
     ],
   },
@@ -90,9 +101,17 @@ export const INCIDENTS: readonly IncidentSeed[] = [
     ageMinutes: 180,
     metadata: { zone: 'ZONE-004', source: 'camera', camera_event: 'OBSTACLE' },
     events: [
-      { eventType: 'created', afterMinutes: 0, payload: { source: 'camera', device: 'CAM-004', confidence: 0.76 } },
+      {
+        eventType: 'created',
+        afterMinutes: 0,
+        payload: { source: 'camera', device: 'CAM-004', confidence: 0.76 },
+      },
       { eventType: 'validated', afterMinutes: 10, payload: { by_role: 'operator' } },
-      { eventType: 'assigned', afterMinutes: 14, payload: { by_role: 'operator', to_role: 'maintenance' } },
+      {
+        eventType: 'assigned',
+        afterMinutes: 14,
+        payload: { by_role: 'operator', to_role: 'maintenance' },
+      },
     ],
   },
   {

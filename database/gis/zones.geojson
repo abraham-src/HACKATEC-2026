@@ -5,34 +5,86 @@
   "features": [
     {
       "type": "Feature",
-      "properties": { "code": "ZONE-001", "name": "Roma Norte", "alcaldia": "Cuauhtémoc", "source": "seed_mock" },
+      "properties": {
+        "code": "ZONE-001",
+        "name": "Roma Norte",
+        "alcaldia": "Cuauhtémoc",
+        "source": "seed_mock"
+      },
       "geometry": {
         "type": "Polygon",
-        "coordinates": [[[-99.1700, 19.4120], [-99.1520, 19.4120], [-99.1520, 19.4260], [-99.1700, 19.4260], [-99.1700, 19.4120]]]
+        "coordinates": [
+          [
+            [-99.17, 19.412],
+            [-99.152, 19.412],
+            [-99.152, 19.426],
+            [-99.17, 19.426],
+            [-99.17, 19.412]
+          ]
+        ]
       }
     },
     {
       "type": "Feature",
-      "properties": { "code": "ZONE-002", "name": "Centro Histórico", "alcaldia": "Cuauhtémoc", "source": "seed_mock" },
+      "properties": {
+        "code": "ZONE-002",
+        "name": "Centro Histórico",
+        "alcaldia": "Cuauhtémoc",
+        "source": "seed_mock"
+      },
       "geometry": {
         "type": "Polygon",
-        "coordinates": [[[-99.1480, 19.4260], [-99.1260, 19.4260], [-99.1260, 19.4400], [-99.1480, 19.4400], [-99.1480, 19.4260]]]
+        "coordinates": [
+          [
+            [-99.148, 19.426],
+            [-99.126, 19.426],
+            [-99.126, 19.44],
+            [-99.148, 19.44],
+            [-99.148, 19.426]
+          ]
+        ]
       }
     },
     {
       "type": "Feature",
-      "properties": { "code": "ZONE-003", "name": "Condesa", "alcaldia": "Cuauhtémoc", "source": "seed_mock" },
+      "properties": {
+        "code": "ZONE-003",
+        "name": "Condesa",
+        "alcaldia": "Cuauhtémoc",
+        "source": "seed_mock"
+      },
       "geometry": {
         "type": "Polygon",
-        "coordinates": [[[-99.1800, 19.4040], [-99.1650, 19.4040], [-99.1650, 19.4180], [-99.1800, 19.4180], [-99.1800, 19.4040]]]
+        "coordinates": [
+          [
+            [-99.18, 19.404],
+            [-99.165, 19.404],
+            [-99.165, 19.418],
+            [-99.18, 19.418],
+            [-99.18, 19.404]
+          ]
+        ]
       }
     },
     {
       "type": "Feature",
-      "properties": { "code": "ZONE-004", "name": "Coyoacán", "alcaldia": "Coyoacán", "source": "seed_mock" },
+      "properties": {
+        "code": "ZONE-004",
+        "name": "Coyoacán",
+        "alcaldia": "Coyoacán",
+        "source": "seed_mock"
+      },
       "geometry": {
         "type": "Polygon",
-        "coordinates": [[[-99.1700, 19.3440], [-99.1560, 19.3440], [-99.1560, 19.3540], [-99.1700, 19.3540], [-99.1700, 19.3440]]]
+        "coordinates": [
+          [
+            [-99.17, 19.344],
+            [-99.156, 19.344],
+            [-99.156, 19.354],
+            [-99.17, 19.354],
+            [-99.17, 19.344]
+          ]
+        ]
       }
     }
   ]

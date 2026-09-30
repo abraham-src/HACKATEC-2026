@@ -12,7 +12,9 @@ export type SimulatorConfig = z.infer<typeof EnvSchema>;
 export function loadConfig(env: NodeJS.ProcessEnv = process.env): SimulatorConfig {
   const parsed = EnvSchema.safeParse(env);
   if (!parsed.success) {
-    const issues = parsed.error.issues.map((i) => `  - ${i.path.join('.')}: ${i.message}`).join('\n');
+    const issues = parsed.error.issues
+      .map((i) => `  - ${i.path.join('.')}: ${i.message}`)
+      .join('\n');
     throw new Error(`Configuración del simulador inválida:\n${issues}`);
   }
   return parsed.data;

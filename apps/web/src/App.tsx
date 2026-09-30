@@ -15,7 +15,9 @@ async function fetchHealth(): Promise<Probe> {
   try {
     const res = await fetch('/api/health', { signal: AbortSignal.timeout(5000) });
     const health = (await res.json()) as HealthResponse;
-    return res.ok ? { state: 'ok', health, checkedAt } : { state: 'server-down', health, checkedAt };
+    return res.ok
+      ? { state: 'ok', health, checkedAt }
+      : { state: 'server-down', health, checkedAt };
   } catch {
     return { state: 'server-down', checkedAt };
   }
@@ -70,7 +72,8 @@ export function App() {
     {
       service: 'API',
       ok: probe.state === 'loading' ? null : probe.state === 'ok',
-      label: probe.state === 'loading' ? 'verificando' : probe.state === 'ok' ? 'en línea' : 'caída',
+      label:
+        probe.state === 'loading' ? 'verificando' : probe.state === 'ok' ? 'en línea' : 'caída',
       detail: health ? `${health.service} v${health.version} · uptime ${health.uptime_s}s` : '—',
     },
     {
@@ -95,7 +98,10 @@ export function App() {
         </div>
       )}
       {probe.state === 'server-down' && (
-        <div role="alert" className="border-b border-danger/40 bg-danger/10 px-4 py-1.5 text-critical">
+        <div
+          role="alert"
+          className="border-b border-danger/40 bg-danger/10 px-4 py-1.5 text-critical"
+        >
           Servidor no disponible, mostrando últimos datos
         </div>
       )}

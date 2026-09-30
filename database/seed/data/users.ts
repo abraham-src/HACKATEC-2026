@@ -2,8 +2,14 @@ import type { RoleName } from '@simu/shared-types';
 
 export const ROLES: ReadonlyArray<{ name: RoleName; description: string }> = [
   { name: 'admin', description: 'Administración del sistema: usuarios, reglas y configuración.' },
-  { name: 'operator', description: 'Operación del centro de monitoreo: valida y asigna incidencias.' },
-  { name: 'maintenance', description: 'Cuadrillas de mantenimiento: atienden incidencias asignadas.' },
+  {
+    name: 'operator',
+    description: 'Operación del centro de monitoreo: valida y asigna incidencias.',
+  },
+  {
+    name: 'maintenance',
+    description: 'Cuadrillas de mantenimiento: atienden incidencias asignadas.',
+  },
   { name: 'citizen', description: 'Ciudadanía: consulta rutas accesibles y reporta incidencias.' },
 ];
 
