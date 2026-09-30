@@ -64,11 +64,29 @@ npm run format      # Prettier
 npm test            # Vitest (shared-utils, api)
 ```
 
+### Pruebas de integración
+
+Las pruebas de la API corren contra una base PostgreSQL real, `simu_test`. Antes de cada corrida se aplican las migraciones, se vacían las tablas y se ejecuta el seed. Se crea una sola vez, como `postgres`:
+
+```sql
+CREATE DATABASE simu_test OWNER simu;
+\c simu_test
+CREATE EXTENSION postgis;
+```
+
+Y en `.env`:
+
+```bash
+TEST_DATABASE_URL=postgresql://simu:simu_dev_password@localhost:5432/simu_test?schema=public
+```
+
+Si `TEST_DATABASE_URL` no está definido, las pruebas de integración se omiten y solo corren las unitarias. La configuración rechaza que `TEST_DATABASE_URL` sea igual a `DATABASE_URL`, para no vaciar la base de desarrollo por accidente.
+
 Reglas:
 
 - Sin `any`. Si es inevitable, se justifica con un comentario en la misma línea.
 - Toda entrada HTTP se valida con Zod.
-- Acceso a datos con Prisma. SQL crudo solo para PostGIS y siempre parametrizado con `$queryRaw` o `$executeRaw` como *tagged template*. Nunca uses `$queryRawUnsafe` con datos de usuario.
+- Acceso a datos con Prisma. SQL crudo solo para PostGIS y siempre parametrizado con `$queryRaw` o `$executeRaw` como _tagged template_. Nunca uses `$queryRawUnsafe` con datos de usuario.
 - Sin secretos en el código: todo por `.env`.
 - Nunca registres correos, nombres, tokens ni contraseñas en logs.
 
@@ -83,6 +101,12 @@ El esquema usa columnas PostGIS generadas e índices GIST que Prisma no represen
    ```
 3. Revisa el SQL en `database/migrations/<fecha>_add_something/`. Elimina cualquier `DROP` de columnas `geom`, de índices `*_geom_idx` o de la tabla `spatial_ref_sys` de PostGIS que Prisma haya propuesto por no reconocerlos.
 4. Aplica con `npm run db:deploy` y haz commit del SQL.
+5. Verifica que no quedó deriva:
+   ```bash
+   cd apps/api
+   npx dotenv -e ../../.env -- prisma migrate diff --from-url "$DATABASE_URL" --to-schema-datamodel ../../database/schema.prisma --script
+   ```
+   La salida esperada contiene solo `DROP INDEX "*_geom_idx"` y `ALTER COLUMN "geom" DROP DEFAULT`. Son los índices GIST y las columnas generadas que Prisma no modela. Cualquier otra línea indica que el SQL y el schema no coinciden.
 
 Si agregas un valor a un enum, actualiza también `packages/shared-types/src/enums.ts`. La prueba de paridad fallará si no lo haces.
 

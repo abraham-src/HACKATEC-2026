@@ -4,15 +4,17 @@ Sistema Inteligente de Monitoreo Urbano para la Ciudad de México. Integra cáma
 
 Esta entrega funciona **solo con datos simulados**: no requiere hardware ni el servicio de IA real.
 
-> **Estado:** Fase 1 de 11 (infraestructura, esquema y seeds). Las fases siguientes están descritas en [docs/arquitectura.md](docs/arquitectura.md#plan-de-fases).
+> **Estado:** Fase 2 de 11. Están listas la infraestructura, el esquema y los seeds, más la API con login, roles, dispositivos, incidencias, accesibilidad, reglas y WebSocket. La interfaz web llega en la Fase 5. Plan completo en [docs/arquitectura.md](docs/arquitectura.md#plan-de-fases).
+
+Sin Docker en Windows: ver [docs/desarrollo.md](docs/desarrollo.md#opción-c-windows-sin-docker).
 
 ## Requisitos
 
-| Herramienta | Versión |
-| --- | --- |
-| Docker Desktop / Docker Engine | 24+ con Docker Compose **2.20+** |
-| Git | 2.40+ |
-| Node.js (solo para desarrollo fuera de Docker) | 20.11+ |
+| Herramienta                                    | Versión                          |
+| ---------------------------------------------- | -------------------------------- |
+| Docker Desktop / Docker Engine                 | 24+ con Docker Compose **2.20+** |
+| Git                                            | 2.40+                            |
+| Node.js (solo para desarrollo fuera de Docker) | 20.11+                           |
 
 ## Arranque rápido
 
@@ -25,13 +27,13 @@ docker compose up --build
 
 El primer arranque tarda unos minutos: instala dependencias, compila, aplica migraciones y carga seeds.
 
-| Servicio | URL | Notas |
-| --- | --- | --- |
-| Web | http://localhost:5173 | nginx; proxya `/api` y `/ws` a la API |
-| API | http://localhost:3000/health | Fastify |
-| PostgreSQL + PostGIS | `localhost:5432` | usuario/clave en `.env` |
-| Simulador | interno, puerto 4000 | sin puerto publicado |
-| IA (opcional) | interno, puerto 8000 | `docker compose --profile ai up` |
+| Servicio             | URL                          | Notas                                 |
+| -------------------- | ---------------------------- | ------------------------------------- |
+| Web                  | http://localhost:5173        | nginx; proxya `/api` y `/ws` a la API |
+| API                  | http://localhost:3000/health | Fastify                               |
+| PostgreSQL + PostGIS | `localhost:5432`             | usuario/clave en `.env`               |
+| Simulador            | interno, puerto 4000         | sin puerto publicado                  |
+| IA (opcional)        | interno, puerto 8000         | `docker compose --profile ai up`      |
 
 ### Verificar la Fase 1
 
@@ -58,19 +60,38 @@ Resultado esperado del seed: `roles=4 users=4 devices=11 readings=192 accessibil
 
 Todas usan la contraseña definida en `SEED_DEMO_PASSWORD` (por defecto `simu2026`).
 
-| Rol | Correo |
-| --- | --- |
-| admin | admin@simu.local |
-| operator | operador@simu.local |
+| Rol         | Correo                   |
+| ----------- | ------------------------ |
+| admin       | admin@simu.local         |
+| operator    | operador@simu.local      |
 | maintenance | mantenimiento@simu.local |
-| citizen | ciudadano@simu.local |
+| citizen     | ciudadano@simu.local     |
 
-El login se implementa en la Fase 2.
+### Probar la API
+
+```bash
+# Login: devuelve access_token (15 min) y refresh_token
+curl -s -X POST http://localhost:3000/auth/login \
+  -H 'content-type: application/json' \
+  -d '{"email":"operador@simu.local","password":"simu2026"}'
+
+# Con el token
+TOKEN=<access_token>
+curl -s http://localhost:3000/devices -H "Authorization: Bearer $TOKEN"
+curl -s "http://localhost:3000/incidents?status=pending,validated&sort=-priority" -H "Authorization: Bearer $TOKEN"
+
+# Lectura de coladera como la envía el gateway
+curl -s -X POST http://localhost:3000/drains/DRAIN-001/readings \
+  -H 'content-type: application/json' -H 'x-device-key: dev-only-device-key-change-me' \
+  -d "{\"value\":88,\"recorded_at\":\"$(date -u +%Y-%m-%dT%H:%M:%SZ)\"}"
+```
+
+Todos los endpoints, los permisos por rol y el protocolo WebSocket están en [docs/api.md](docs/api.md).
 
 ## Estructura del repositorio
 
 ```text
-simu/
+HACKATEC-2026/
 ├── apps/
 │   ├── web/            React 18 + Vite + TS + Tailwind
 │   ├── api/            Node 20 + Fastify + Prisma

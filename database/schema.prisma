@@ -147,9 +147,25 @@ model User {
   createdAt         DateTime   @default(now()) @map("created_at") @db.Timestamptz(3)
   updatedAt         DateTime   @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(3)
   assignedIncidents Incident[] @relation("IncidentAssignee")
+  refreshTokens     RefreshToken[]
 
   @@index([roleId])
   @@map("users")
+}
+
+/// One row per issued refresh token (its JWT `jti`). Rotation revokes the old row and
+/// points `replaced_by` to the new one; presenting a revoked token revokes the whole family.
+model RefreshToken {
+  id         String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId     String    @map("user_id") @db.Uuid
+  user       User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  expiresAt  DateTime  @map("expires_at") @db.Timestamptz(3)
+  revokedAt  DateTime? @map("revoked_at") @db.Timestamptz(3)
+  replacedBy String?   @map("replaced_by") @db.Uuid
+  createdAt  DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  @@index([userId])
+  @@map("refresh_tokens")
 }
 
 // ───────────────────────────── Devices ─────────────────────────────

@@ -38,6 +38,9 @@ services:
       JWT_REFRESH_SECRET: ${JWT_REFRESH_SECRET:?Define JWT_REFRESH_SECRET en .env}
       JWT_ACCESS_TTL: ${JWT_ACCESS_TTL:-15m}
       JWT_REFRESH_TTL: ${JWT_REFRESH_TTL:-7d}
+      COOKIE_SECURE: ${COOKIE_SECURE:-false}
+      LOGIN_RATE_LIMIT_MAX: ${LOGIN_RATE_LIMIT_MAX:-10}
+      DEVICE_INGEST_KEY: ${DEVICE_INGEST_KEY:?Define DEVICE_INGEST_KEY en .env}
       SEED_DEMO_PASSWORD: ${SEED_DEMO_PASSWORD:?Define SEED_DEMO_PASSWORD en .env}
       AI_SERVICE_URL: ${AI_SERVICE_URL:-}
     ports:
@@ -78,6 +81,7 @@ services:
       SIMULATOR_HOST: 0.0.0.0
       SIMULATOR_PORT: 4000
       SIMULATOR_API_URL: http://api:3000
+      DEVICE_INGEST_KEY: ${DEVICE_INGEST_KEY:?Define DEVICE_INGEST_KEY en .env}
       LOG_LEVEL: ${LOG_LEVEL:-info}
     # Internal only (spec §2.3). The /control panel is exposed in Phase 4.
     expose:

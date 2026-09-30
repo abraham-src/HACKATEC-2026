@@ -24,13 +24,13 @@ En Docker, `web` es nginx: sirve el SPA y hace proxy de `/api/*` y `/ws` hacia `
 
 ## Servicios
 
-| Servicio | Tecnología | Puerto | Responsabilidad |
-| --- | --- | --- | --- |
-| `postgres` | postgis/postgis:16-3.4 | 5432 | Persistencia y consultas espaciales |
-| `api` | Node 20, Fastify 5, Prisma 5, Zod | 3000 | REST, WebSocket, auth, motor de reglas, heartbeat |
-| `web` | React 18, Vite, Tailwind 4, MapLibre (Fase 6) | 80 → host 5173 | Centro de control |
-| `simulator` | Node 20, Fastify, SQLite (Fase 4) | 4000 interno | Coladeras, cámaras, gateway, modo sin Internet |
-| `ai-service` | Python 3.12, FastAPI | 8000 interno | Análisis de imagen (mock), perfil `ai` |
+| Servicio     | Tecnología                                    | Puerto         | Responsabilidad                                   |
+| ------------ | --------------------------------------------- | -------------- | ------------------------------------------------- |
+| `postgres`   | postgis/postgis:16-3.4                        | 5432           | Persistencia y consultas espaciales               |
+| `api`        | Node 20, Fastify 5, Prisma 5, Zod             | 3000           | REST, WebSocket, auth, motor de reglas, heartbeat |
+| `web`        | React 18, Vite, Tailwind 4, MapLibre (Fase 6) | 80 → host 5173 | Centro de control                                 |
+| `simulator`  | Node 20, Fastify, SQLite (Fase 4)             | 4000 interno   | Coladeras, cámaras, gateway, modo sin Internet    |
+| `ai-service` | Python 3.12, FastAPI                          | 8000 interno   | Análisis de imagen (mock), perfil `ai`            |
 
 ## Decisiones y trade-offs
 
@@ -50,27 +50,35 @@ En Docker, `web` es nginx: sirve el SPA y hace proxy de `/api/*` y `/ws` hacia `
 
 **Privacidad por diseño.** El servicio de IA solo reporta clases de infraestructura urbana. Nunca devuelve personas, rostros ni placas, y no persiste imágenes. Los logs redactan `authorization`, cookies, tokens y contraseñas.
 
+**Autenticación.** El access token es un JWT HS256 que dura 15 min y no consulta la base en cada request. El refresh token es un JWT con `jti` que apunta a una fila de `refresh_tokens`. Cada uso lo rota. Si llega un refresh ya rotado, se asume robo y se revocan todas las sesiones del usuario. En el navegador viaja en una cookie httpOnly SameSite=Strict, fuera del alcance de JavaScript. Los dispositivos no tienen usuario: se autentican con una clave compartida (`x-device-key`) limitada a heartbeats y lecturas.
+
+**WebSocket en proceso.** `WsHub` mantiene las suscripciones en memoria y los servicios publican con `hub.publish(canal, evento, datos)`. Alcanza para una sola instancia de la API. Para escalar horizontalmente basta con poner Redis o `LISTEN/NOTIFY` de Postgres detrás de `publish`, sin tocar a los clientes.
+
+**Concurrencia en incidencias.** Las transiciones usan un `UPDATE … WHERE status = <estado leído>`. Si dos personas actúan a la vez sobre la misma incidencia, solo una gana y la otra recibe 409, sin bloqueos explícitos.
+
+**Filtro bbox sin SQL crudo.** Para puntos, un rango de latitud y longitud equivale exactamente a `ST_MakeEnvelope`, así que se resuelve con Prisma. PostGIS se reserva para distancias reales (`ST_DWithin` sobre `geography`) y para leer geometrías.
+
 ## Tolerancia a fallos (resumen)
 
-| Falla | Comportamiento | Fase |
-| --- | --- | --- |
-| Gateway sin Internet | Guarda en SQLite con `synced=false`; reintenta con backoff exponencial | 4 |
-| API caída | Igual que arriba; el frontend muestra "Servidor no disponible" | 4, 10 |
-| Navegador sin red | Banner "Sin conexión — mostrando últimos datos" | 10 |
-| Dispositivo sin heartbeat 90 s | `devices.status = offline` y evento `devices:status` | 3 |
+| Falla                          | Comportamiento                                                         | Fase  |
+| ------------------------------ | ---------------------------------------------------------------------- | ----- |
+| Gateway sin Internet           | Guarda en SQLite con `synced=false`; reintenta con backoff exponencial | 4     |
+| API caída                      | Igual que arriba; el frontend muestra "Servidor no disponible"         | 4, 10 |
+| Navegador sin red              | Banner "Sin conexión — mostrando últimos datos"                        | 10    |
+| Dispositivo sin heartbeat 90 s | `devices.status = offline` y evento `devices:status`                   | 3     |
 
 ## Plan de fases
 
-| Fase | Alcance | Estado |
-| --- | --- | --- |
-| 1 | Monorepo, Docker Compose, PostGIS, Prisma, esquema, seeds | Hecha |
-| 2 | Auth JWT, roles, CRUD devices/incidents/accessibility, WebSocket | Pendiente |
-| 3 | Motor de reglas, ingesta, heartbeat monitor | Pendiente |
-| 4 | Simulador con SQLite store-and-forward y panel de control | Pendiente |
-| 5 | Frontend: layout, login, dashboard | Pendiente |
-| 6 | Mapa MapLibre + edificios 3D + 12 capas | Pendiente |
-| 7 | Panel de incidencias + timeline en vivo | Pendiente |
-| 8 | Accesibilidad: rutas y alternativas | Pendiente |
-| 9 | Mantenimiento, reglas, usuarios, logs | Pendiente |
-| 10 | Pulido visual, estados de error, offline | Pendiente |
-| 11 | E2E Playwright de los 6 escenarios + documentación final | Pendiente |
+| Fase | Alcance                                                          | Estado    |
+| ---- | ---------------------------------------------------------------- | --------- |
+| 1    | Monorepo, Docker Compose, PostGIS, Prisma, esquema, seeds        | Hecha     |
+| 2    | Auth JWT, roles, CRUD devices/incidents/accessibility, WebSocket | Hecha     |
+| 3    | Motor de reglas, ingesta, heartbeat monitor                      | Pendiente |
+| 4    | Simulador con SQLite store-and-forward y panel de control        | Pendiente |
+| 5    | Frontend: layout, login, dashboard                               | Pendiente |
+| 6    | Mapa MapLibre + edificios 3D + 12 capas                          | Pendiente |
+| 7    | Panel de incidencias + timeline en vivo                          | Pendiente |
+| 8    | Accesibilidad: rutas y alternativas                              | Pendiente |
+| 9    | Mantenimiento, reglas, usuarios, logs                            | Pendiente |
+| 10   | Pulido visual, estados de error, offline                         | Pendiente |
+| 11   | E2E Playwright de los 6 escenarios + documentación final         | Pendiente |

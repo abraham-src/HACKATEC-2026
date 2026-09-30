@@ -8,7 +8,7 @@ export interface HealthRoutesOptions {
 }
 
 export const healthRoutes: FastifyPluginAsync<HealthRoutesOptions> = async (app, opts) => {
-  app.get('/health', async (req, reply) => {
+  app.get('/health', { config: { rateLimit: false } }, async (req, reply) => {
     const base = {
       service: 'simu-api',
       version: opts.version,
