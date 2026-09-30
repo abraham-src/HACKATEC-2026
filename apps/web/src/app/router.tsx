@@ -1,7 +1,10 @@
 import { createBrowserRouter, Link } from 'react-router-dom';
 import { AppShell } from '../components/shell/AppShell';
+import { STAFF } from '../components/shell/nav';
 import { RequireAuth } from '../components/shell/RequireAuth';
 import { DashboardPage } from '../pages/DashboardPage';
+import { DevicesPage } from '../pages/DevicesPage';
+import { IncidentsPage } from '../pages/IncidentsPage';
 import { LoginPage } from '../pages/LoginPage';
 import { MapPage } from '../pages/MapPage';
 
@@ -28,6 +31,15 @@ export const router = createBrowserRouter([
     children: [
       { index: true, element: <DashboardPage /> },
       { path: 'mapa', element: <MapPage /> },
+      { path: 'incidencias', element: <IncidentsPage /> },
+      {
+        path: 'dispositivos',
+        element: (
+          <RequireAuth roles={STAFF}>
+            <DevicesPage />
+          </RequireAuth>
+        ),
+      },
       { path: '*', element: <NotFound /> },
     ],
   },

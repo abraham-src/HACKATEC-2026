@@ -108,7 +108,7 @@ En Docker, `web` es nginx: sirve el SPA y hace proxy de `/api/*` y `/ws` hacia `
 | 4    | Simulador con SQLite store-and-forward y panel de control        | Hecha     |
 | 5    | Frontend: layout, login, dashboard                               | Hecha     |
 | 6    | Mapa MapLibre + edificios 3D + 12 capas                          | Hecha     |
-| 7    | Panel de incidencias + timeline en vivo                          | Pendiente |
+| 7    | Panel de incidencias + timeline en vivo                          | Hecha     |
 | 8    | Accesibilidad: rutas y alternativas                              | Pendiente |
 | 9    | Mantenimiento, reglas, usuarios, logs                            | Pendiente |
 | 10   | Pulido visual, estados de error, offline                         | Pendiente |

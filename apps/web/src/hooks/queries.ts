@@ -17,6 +17,7 @@ export interface IncidentQuery {
   type?: string;
   bbox?: string;
   assigned_to?: string;
+  q?: string;
   sort?: string;
   page?: number;
   page_size?: number;

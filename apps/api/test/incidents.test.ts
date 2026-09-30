@@ -69,6 +69,21 @@ describe.skipIf(!hasTestDb)('incidents', () => {
     expect(badEnum.statusCode).toBe(400);
   });
 
+  it('searches descriptions case-insensitively', async () => {
+    const res = await req('GET', '/incidents?q=MOTOCICLETA', 'operator');
+    const items = res.json<PaginatedResponse<IncidentDto>>().data;
+    expect(items.map((i) => i.type)).toEqual(['accident']);
+  });
+
+  it('lists assignable maintenance staff (id and name only) for operators', async () => {
+    const res = await req('GET', '/users/assignees', 'operator');
+    expect(res.statusCode).toBe(200);
+    const list = res.json<{ data: Array<Record<string, unknown>> }>().data;
+    expect(list).toEqual([{ id: maintenanceId, name: 'Mantenimiento Demo' }]);
+    expect((await req('GET', '/users/assignees', 'maintenance')).statusCode).toBe(403);
+    expect((await req('GET', '/users/assignees', 'citizen')).statusCode).toBe(403);
+  });
+
   it('sorts by priority, most severe first', async () => {
     const res = await req('GET', '/incidents?sort=-priority', 'operator');
     const priorities = res.json<PaginatedResponse<IncidentDto>>().data.map((i) => i.priority);

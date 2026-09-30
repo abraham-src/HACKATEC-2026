@@ -16,6 +16,7 @@ const ListQuery = z.object({
   bbox: bboxParam,
   assigned_to: z.union([z.literal('me'), z.string().uuid()]).optional(),
   device_code: z.string().optional(),
+  q: z.string().trim().max(100).optional(),
   page: z.coerce.number().int().min(1).default(1),
   page_size: z.coerce.number().int().min(1).max(200).default(50),
   sort: z.enum(['created_at', '-created_at', 'priority', '-priority']).default('-created_at'),
@@ -66,6 +67,7 @@ export function incidentRoutes(ctx: ServiceContext, guards: AuthGuards): Fastify
         types: q.type,
         bbox: q.bbox,
         deviceCode: q.device_code,
+        q: q.q || undefined,
         assignedTo: q.assigned_to === 'me' ? currentUser(req).id : q.assigned_to,
       };
       if (q.format === 'geojson') {

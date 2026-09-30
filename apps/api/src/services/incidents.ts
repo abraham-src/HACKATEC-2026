@@ -46,6 +46,8 @@ export interface IncidentFilter {
   bbox?: BBox;
   assignedTo?: string;
   deviceCode?: string;
+  /** Case-insensitive text search in the description. */
+  q?: string;
 }
 
 function whereFrom(f: IncidentFilter): Prisma.IncidentWhereInput {
@@ -55,6 +57,7 @@ function whereFrom(f: IncidentFilter): Prisma.IncidentWhereInput {
     ...(f.types && { type: { in: f.types } }),
     ...(f.assignedTo && { assignedToId: f.assignedTo }),
     ...(f.deviceCode && { device: { deviceCode: f.deviceCode } }),
+    ...(f.q && { description: { contains: f.q, mode: 'insensitive' as const } }),
     // Points only: a lat/lng range is exact for a bbox and stays in Prisma.
     ...(f.bbox && {
       longitude: { gte: f.bbox[0], lte: f.bbox[2] },

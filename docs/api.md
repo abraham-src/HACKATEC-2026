@@ -142,16 +142,16 @@ Reglas de ingesta:
 
 ### Incidencias
 
-| Método | Ruta                      | Notas                                                                                                                                                                                                    |
-| ------ | ------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| GET    | `/incidents`              | Filtros `status`, `priority`, `type`, `bbox`, `assigned_to=me\|<uuid>`, `device_code`. Paginación `page` y `page_size` (máx. 200). `sort=-created_at\|created_at\|-priority\|priority`. `format=geojson` |
-| GET    | `/incidents/:id`          |                                                                                                                                                                                                          |
-| POST   | `/incidents`              | `CreateIncidentInput`. La ubicación debe estar en CDMX. Emite `incidents:created`                                                                                                                        |
-| PATCH  | `/incidents/:id`          | `{ description?, priority?, type?, status?: "in_progress" \| "rejected", note? }`                                                                                                                        |
-| POST   | `/incidents/:id/validate` | `{ note? }`                                                                                                                                                                                              |
-| POST   | `/incidents/:id/assign`   | `{ user_id, note? }`. Solo a personal de mantenimiento activo                                                                                                                                            |
-| POST   | `/incidents/:id/resolve`  | `{ note? }`                                                                                                                                                                                              |
-| GET    | `/incidents/:id/events`   | Bitácora completa                                                                                                                                                                                        |
+| Método | Ruta                      | Notas                                                                                                                                                                                                                                                              |
+| ------ | ------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| GET    | `/incidents`              | Filtros `status`, `priority`, `type`, `bbox`, `assigned_to=me\|<uuid>`, `device_code`, `q` (texto en la descripción, sin distinguir mayúsculas). Paginación `page` y `page_size` (máx. 200). `sort=-created_at\|created_at\|-priority\|priority`. `format=geojson` |
+| GET    | `/incidents/:id`          |                                                                                                                                                                                                                                                                    |
+| POST   | `/incidents`              | `CreateIncidentInput`. La ubicación debe estar en CDMX. Emite `incidents:created`                                                                                                                                                                                  |
+| PATCH  | `/incidents/:id`          | `{ description?, priority?, type?, status?: "in_progress" \| "rejected", note? }`                                                                                                                                                                                  |
+| POST   | `/incidents/:id/validate` | `{ note? }`                                                                                                                                                                                                                                                        |
+| POST   | `/incidents/:id/assign`   | `{ user_id, note? }`. Solo a personal de mantenimiento activo                                                                                                                                                                                                      |
+| POST   | `/incidents/:id/resolve`  | `{ note? }`                                                                                                                                                                                                                                                        |
+| GET    | `/incidents/:id/events`   | Bitácora completa                                                                                                                                                                                                                                                  |
 
 Una ciudadana o ciudadano no puede fijar prioridad ni confianza. Su reporte entra como `pending`, prioridad `medium` y `source: citizen_report`.
 
@@ -351,6 +351,12 @@ Mensajes de datos. Siempre traen `event` y nunca `type`:
 | `alerts`         | `created`, `escalated`                                    | `AlertEvent`, con `label`, `priority`, `message`, `rule_name` y `facts`                                 | todos |
 
 "staff" es admin, operator y maintenance. El servidor envía un ping cada 30 s y cierra las conexiones que no responden.
+
+### Usuarios
+
+| Método | Ruta               | Roles           | Notas                                                                                       |
+| ------ | ------------------ | --------------- | ------------------------------------------------------------------------------------------- |
+| GET    | `/users/assignees` | admin, operator | Personal de mantenimiento activo al que se puede asignar una incidencia. Solo `id` y `name` |
 
 ## Pendiente en fases siguientes
 

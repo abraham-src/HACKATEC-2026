@@ -11,7 +11,7 @@ export function AppShell() {
   return (
     <div className="flex h-full flex-col">
       <ConnectionBanner />
-      <div className="grid min-h-0 flex-1 grid-cols-[48px_1fr] grid-rows-[40px_1fr_28px]">
+      <div className="grid min-h-0 flex-1 grid-cols-[48px_1fr] grid-rows-[40px_minmax(0,1fr)_auto]">
         <TopBar />
         <NavRail />
         <main className="min-h-0 min-w-0 overflow-auto">

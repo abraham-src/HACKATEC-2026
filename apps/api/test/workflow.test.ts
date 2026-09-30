@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest';
 import { redactUrl } from '../src/app.js';
 import { parseDurationSeconds } from '../src/config.js';
 import {
+  availableActions,
   canPerform,
   canTransition,
   TRANSITIONS,
@@ -59,6 +60,28 @@ describe('incident workflow permissions', () => {
     for (const a of Object.keys(TRANSITIONS) as IncidentAction[]) {
       expect(canPerform(a, citizen, { assignedToId: 'cit-1' })).toBe(false);
     }
+  });
+});
+
+describe('availableActions (what the UI offers)', () => {
+  it('offers triage actions to operators on a pending incident', () => {
+    expect(availableActions(op, { status: 'pending', assignedToId: null })).toEqual([
+      'validate',
+      'reject',
+      'assign',
+    ]);
+  });
+
+  it('offers start/resolve to the assigned maintenance user only', () => {
+    expect(availableActions(mnt, { status: 'assigned', assignedToId: 'mnt-1' })).toEqual([
+      'start',
+      'resolve',
+    ]);
+    expect(availableActions(mnt, { status: 'assigned', assignedToId: 'other' })).toEqual([]);
+  });
+
+  it('offers nothing on closed incidents', () => {
+    expect(availableActions(op, { status: 'resolved', assignedToId: null })).toEqual([]);
   });
 });
 
