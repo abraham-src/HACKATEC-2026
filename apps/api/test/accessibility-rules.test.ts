@@ -75,6 +75,43 @@ describe.skipIf(!hasTestDb)('accessibility', () => {
   });
 });
 
+describe.skipIf(!hasTestDb)('GIS layers', () => {
+  let t: TestContext;
+  let tok: Record<DemoRole, string>;
+  beforeAll(async () => {
+    t = await createTestApp();
+    tok = await tokensFor(t.app);
+  });
+  afterAll(async () => t?.close());
+
+  it('serves the flood-risk and zone layers as GeoJSON to any signed-in user', async () => {
+    const flood = await t.app.inject({
+      method: 'GET',
+      url: '/gis/flood-risk-zones',
+      headers: bearer(tok.citizen),
+    });
+    expect(flood.statusCode).toBe(200);
+    const fc = flood.json<{ type: string; features: Array<{ properties: { code: string } }> }>();
+    expect(fc.type).toBe('FeatureCollection');
+    expect(fc.features.map((f) => f.properties.code)).toContain('FLOOD-001');
+
+    const zones = await t.app.inject({
+      method: 'GET',
+      url: '/gis/zones',
+      headers: bearer(tok.operator),
+    });
+    expect(zones.json<{ features: unknown[] }>().features).toHaveLength(4);
+  });
+
+  it('rejects unknown layers and anonymous access', async () => {
+    expect(
+      (await t.app.inject({ method: 'GET', url: '/gis/secret', headers: bearer(tok.admin) }))
+        .statusCode,
+    ).toBe(404);
+    expect((await t.app.inject({ method: 'GET', url: '/gis/zones' })).statusCode).toBe(401);
+  });
+});
+
 describe.skipIf(!hasTestDb)('rules', () => {
   let t: TestContext;
   let tok: Record<DemoRole, string>;

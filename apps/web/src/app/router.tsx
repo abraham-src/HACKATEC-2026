@@ -3,6 +3,7 @@ import { AppShell } from '../components/shell/AppShell';
 import { RequireAuth } from '../components/shell/RequireAuth';
 import { DashboardPage } from '../pages/DashboardPage';
 import { LoginPage } from '../pages/LoginPage';
+import { MapPage } from '../pages/MapPage';
 
 function NotFound() {
   return (
@@ -26,6 +27,7 @@ export const router = createBrowserRouter([
     ),
     children: [
       { index: true, element: <DashboardPage /> },
+      { path: 'mapa', element: <MapPage /> },
       { path: '*', element: <NotFound /> },
     ],
   },

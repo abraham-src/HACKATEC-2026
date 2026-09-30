@@ -32,6 +32,122 @@
   }
 }
 
+/* ── MapLibre: dark popups and controls matching the control-room tokens ── */
+.simu-popup-wrap .maplibregl-popup-content {
+  background: var(--color-surface);
+  color: var(--color-fg);
+  border: 1px solid var(--color-line);
+  border-radius: 2px;
+  padding: 0;
+  box-shadow: none;
+  font-family: var(--font-sans);
+}
+.simu-popup-wrap .maplibregl-popup-tip {
+  border-top-color: var(--color-line) !important;
+  border-bottom-color: var(--color-line) !important;
+}
+.simu-popup-wrap .maplibregl-popup-close-button {
+  color: var(--color-fg-muted);
+  font-size: 16px;
+  padding: 0 6px;
+}
+.simu-popup {
+  font-size: 12px;
+  min-width: 220px;
+}
+.simu-popup-head {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+  padding: 6px 24px 4px 8px;
+  border-bottom: 1px solid var(--color-line);
+  background: var(--color-surface-2);
+}
+.simu-popup-sub {
+  padding: 4px 8px;
+  color: var(--color-fg-muted);
+}
+.simu-popup-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+.simu-popup-table th {
+  text-align: left;
+  font-weight: 400;
+  color: var(--color-fg-muted);
+  padding: 2px 8px;
+  white-space: nowrap;
+  vertical-align: top;
+}
+.simu-popup-table td {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  padding: 2px 8px;
+}
+.simu-popup-table tr + tr {
+  border-top: 1px solid var(--color-line);
+}
+.simu-muted {
+  color: var(--color-fg-muted);
+}
+.simu-chip {
+  display: inline-block;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  text-transform: uppercase;
+  border: 1px solid var(--color-line);
+  padding: 0 4px;
+  border-radius: 2px;
+}
+.simu-chip-ok {
+  color: var(--color-ok);
+  border-color: color-mix(in srgb, var(--color-ok) 50%, transparent);
+}
+.simu-chip-warn {
+  color: var(--color-warn);
+  border-color: color-mix(in srgb, var(--color-warn) 50%, transparent);
+}
+.simu-chip-danger,
+.simu-chip-critical {
+  color: var(--color-critical);
+  border-color: color-mix(in srgb, var(--color-critical) 60%, transparent);
+}
+.simu-chip-accent {
+  color: #58a6ff;
+  border-color: color-mix(in srgb, var(--color-accent) 50%, transparent);
+}
+.simu-chip-neutral {
+  color: var(--color-fg-muted);
+}
+.maplibregl-ctrl-group {
+  background: var(--color-surface) !important;
+  border: 1px solid var(--color-line);
+  border-radius: 2px !important;
+  box-shadow: none !important;
+}
+.maplibregl-ctrl-group button + button {
+  border-top: 1px solid var(--color-line) !important;
+}
+.maplibregl-ctrl-group button .maplibregl-ctrl-icon {
+  filter: invert(0.85);
+}
+.maplibregl-ctrl-scale {
+  background: color-mix(in srgb, var(--color-surface) 85%, transparent);
+  color: var(--color-fg-muted);
+  border-color: var(--color-fg-muted);
+  font-family: var(--font-mono);
+  font-size: 10px;
+}
+.maplibregl-ctrl-attrib {
+  background: color-mix(in srgb, var(--color-surface) 85%, transparent) !important;
+  color: var(--color-fg-muted);
+  font-size: 10px;
+}
+.maplibregl-ctrl-attrib a {
+  color: var(--color-fg-muted);
+}
+
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,

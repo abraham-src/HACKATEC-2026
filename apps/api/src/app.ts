@@ -1,3 +1,4 @@
+import path from 'node:path';
 import fastifyCookie from '@fastify/cookie';
 import fastifyRateLimit from '@fastify/rate-limit';
 import fastifyWebsocket from '@fastify/websocket';
@@ -10,6 +11,7 @@ import { AppError } from './lib/errors.js';
 import { createAuthGuards } from './plugins/auth.js';
 import { accessibilityRoutes } from './routes/accessibility.js';
 import { aiRoutes } from './routes/ai.js';
+import { gisRoutes } from './routes/gis.js';
 import { authRoutes } from './routes/auth.js';
 import { deviceRoutes } from './routes/devices.js';
 import { eventRoutes } from './routes/events.js';
@@ -121,6 +123,7 @@ export async function buildApp({
   await app.register(ruleRoutes(ctx, guards));
   await app.register(eventRoutes(ctx, guards));
   await app.register(aiRoutes(ctx, guards));
+  await app.register(gisRoutes(path.resolve(process.cwd(), config.GIS_DIR), guards));
   await app.register(wsRoutes(hub, guards));
 
   return app;

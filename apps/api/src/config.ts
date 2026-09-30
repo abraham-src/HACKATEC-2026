@@ -55,6 +55,8 @@ export const EnvSchema = z.object({
   /** When the sender omits `synced`, data older than this is flagged synced=false. */
   SYNC_LATE_THRESHOLD_S: z.coerce.number().int().min(1).default(60),
   AI_SERVICE_URL: z.preprocess(emptyToUndefined, z.string().url().optional()),
+  /** Folder with the static GeoJSON layers (database/gis). Relative to the API's cwd. */
+  GIS_DIR: z.string().default('../../database/gis'),
 });
 
 export type Config = z.infer<typeof EnvSchema>;

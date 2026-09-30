@@ -79,6 +79,16 @@ En Docker, `web` es nginx: sirve el SPA y hace proxy de `/api/*` y `/ws` hacia `
 - **Conectividad.** El cliente distingue "sin red", cuando `navigator.onLine` es falso, de "servidor caído", cuando `fetch` falla o el proxy responde 5xx sin sobre de error. En ambos casos TanStack Query conserva los últimos datos y un banner lo indica.
 - **Series para sparklines.** `GET /drains/:code/readings/series` agrega en Postgres con `date_bin`: 48 puntos por día en lugar de unas 17 000 lecturas crudas.
 
+**Mapa.** Usa MapLibre GL 5 con tiles vectoriales de OpenFreeMap: esquema OpenMapTiles, gratis y sin API key.
+
+- **Estilo propio.** El mapa base es oscuro y está escrito a mano en `features/map/style.ts`, para que coincida con los tokens de la interfaz y la ciudad quede detrás de los datos. Los edificios usan `fill-extrusion` con `render_height` desde zoom 14. El botón 2D/3D cambia la inclinación y aplana los edificios.
+- **Marcadores.** Son SVG propios registrados como imágenes: un círculo de color por estado con un glifo blanco encima. Las incidencias usan rombos por prioridad para no confundirse con dispositivos.
+- **Capas.** Las 12 capas conmutables son grupos de capas MapLibre sobre cinco fuentes GeoJSON: dispositivos, incidencias, accesibilidad, rutas y zonas de inundación. Mostrar u ocultar una capa cambia `visibility`: no vuelve a crear capas ni a descargar datos.
+- **Tiempo real.** Las fuentes se alimentan de la misma caché de TanStack Query que parchea el WebSocket. Cuando cambia el nivel de una coladera, `setData` actualiza el marcador, su etiqueta y su halo sin recargar.
+- **Popups.** Muestran los datos crudos con timestamp y edad relativa, escapados contra XSS.
+- **Ciudadanía.** Las capas de dispositivos se ocultan para la ciudadanía, porque la API no le entrega esos datos.
+- **Nota de CSS.** `maplibre-gl.css` fuerza `position: relative` en el contenedor, así que este necesita tamaño explícito (`h-full`) y la fila de la grilla debe ser definida.
+
 ## Tolerancia a fallos (resumen)
 
 | Falla                          | Comportamiento                                                         | Fase  |
@@ -97,7 +107,7 @@ En Docker, `web` es nginx: sirve el SPA y hace proxy de `/api/*` y `/ws` hacia `
 | 3    | Motor de reglas, ingesta, heartbeat monitor                      | Hecha     |
 | 4    | Simulador con SQLite store-and-forward y panel de control        | Hecha     |
 | 5    | Frontend: layout, login, dashboard                               | Hecha     |
-| 6    | Mapa MapLibre + edificios 3D + 12 capas                          | Pendiente |
+| 6    | Mapa MapLibre + edificios 3D + 12 capas                          | Hecha     |
 | 7    | Panel de incidencias + timeline en vivo                          | Pendiente |
 | 8    | Accesibilidad: rutas y alternativas                              | Pendiente |
 | 9    | Mantenimiento, reglas, usuarios, logs                            | Pendiente |

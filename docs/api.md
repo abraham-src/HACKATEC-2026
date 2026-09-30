@@ -98,16 +98,17 @@ curl -s -X POST http://localhost:3000/auth/login \
 
 ### Dispositivos
 
-| Método | Ruta                                      | Notas                                                                                             |
-| ------ | ----------------------------------------- | ------------------------------------------------------------------------------------------------- |
-| GET    | `/devices?type=&status=&format=`          | `type` y `status` aceptan varios valores                                                          |
-| GET    | `/devices/:code`                          | `code` como `CAM-001`                                                                             |
-| PATCH  | `/devices/:code/status`                   | `{ status, reason? }`. Emite `devices:status`                                                     |
-| POST   | `/devices/:code/heartbeat`                | `{ status?: "online" \| "degraded", health? }`. Emite `heartbeats` y, si cambia, `devices:status` |
-| GET    | `/cameras`, `/cameras/:code`              |                                                                                                   |
-| GET    | `/drains`, `/drains/:code`                |                                                                                                   |
-| GET    | `/drains/:code/readings?from=&to=&limit=` | Por defecto las últimas 24 h, orden ascendente                                                    |
-| POST   | `/drains/:code/readings`                  | Una lectura o un lote `{ readings: [...] }` de hasta 500                                          |
+| Método | Ruta                                                   | Notas                                                                                             |
+| ------ | ------------------------------------------------------ | ------------------------------------------------------------------------------------------------- |
+| GET    | `/devices?type=&status=&format=`                       | `type` y `status` aceptan varios valores                                                          |
+| GET    | `/devices/:code`                                       | `code` como `CAM-001`                                                                             |
+| PATCH  | `/devices/:code/status`                                | `{ status, reason? }`. Emite `devices:status`                                                     |
+| POST   | `/devices/:code/heartbeat`                             | `{ status?: "online" \| "degraded", health? }`. Emite `heartbeats` y, si cambia, `devices:status` |
+| GET    | `/cameras`, `/cameras/:code`                           |                                                                                                   |
+| GET    | `/drains`, `/drains/:code`                             |                                                                                                   |
+| GET    | `/drains/:code/readings?from=&to=&limit=`              | Por defecto las últimas 24 h. Devuelve las `limit` más recientes, de la más vieja a la más nueva  |
+| GET    | `/drains/:code/readings/series?hours=24&bucket_min=30` | Serie agregada en Postgres (`date_bin`): `{ t, avg, max, n }` por intervalo. Para sparklines      |
+| POST   | `/drains/:code/readings`                               | Una lectura o un lote `{ readings: [...] }` de hasta 500                                          |
 
 Un dispositivo en `maintenance` conserva ese estado aunque lleguen heartbeats. Es un bloqueo manual.
 
@@ -209,6 +210,15 @@ Aplicación de la regla ganadora, que es la más severa entre las que coinciden:
 - **Nunca baja la prioridad sola.** Cerrar la incidencia es decisión de una persona. Después de resolverla, una nueva condición abre otra.
 
 Cada creación o escalamiento queda en la bitácora con la regla, los hechos y el disparador.
+
+### Capas GIS
+
+| Método | Ruta                    | Roles | Notas                                                           |
+| ------ | ----------------------- | ----- | --------------------------------------------------------------- |
+| GET    | `/gis/flood-risk-zones` | todos | Zonas con riesgo de inundación (GeoJSON mock de `database/gis`) |
+| GET    | `/gis/zones`            | todos | Zonas operativas ZONE-001 a ZONE-004                            |
+
+Se cargan en memoria al arrancar. Si un archivo falta o es inválido, la API no arranca.
 
 ### Eventos, clima e IA
 
