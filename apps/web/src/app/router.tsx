@@ -1,13 +1,19 @@
+import type { RoleName } from '@simu/shared-types';
+import type { ReactNode } from 'react';
 import { createBrowserRouter, Link } from 'react-router-dom';
 import { AppShell } from '../components/shell/AppShell';
-import { STAFF } from '../components/shell/nav';
+import { ADMIN, STAFF } from '../components/shell/nav';
 import { RequireAuth } from '../components/shell/RequireAuth';
 import { AccessibilityPage } from '../pages/AccessibilityPage';
 import { DashboardPage } from '../pages/DashboardPage';
 import { DevicesPage } from '../pages/DevicesPage';
 import { IncidentsPage } from '../pages/IncidentsPage';
 import { LoginPage } from '../pages/LoginPage';
+import { LogsPage } from '../pages/LogsPage';
+import { MaintenancePage } from '../pages/MaintenancePage';
 import { MapPage } from '../pages/MapPage';
+import { RulesPage } from '../pages/RulesPage';
+import { UsersPage } from '../pages/UsersPage';
 
 function NotFound() {
   return (
@@ -19,6 +25,10 @@ function NotFound() {
     </div>
   );
 }
+
+const only = (roles: readonly RoleName[], element: ReactNode) => (
+  <RequireAuth roles={roles}>{element}</RequireAuth>
+);
 
 export const router = createBrowserRouter([
   { path: '/login', element: <LoginPage /> },
@@ -34,14 +44,11 @@ export const router = createBrowserRouter([
       { path: 'mapa', element: <MapPage /> },
       { path: 'incidencias', element: <IncidentsPage /> },
       { path: 'accesibilidad', element: <AccessibilityPage /> },
-      {
-        path: 'dispositivos',
-        element: (
-          <RequireAuth roles={STAFF}>
-            <DevicesPage />
-          </RequireAuth>
-        ),
-      },
+      { path: 'mantenimiento', element: only(STAFF, <MaintenancePage />) },
+      { path: 'dispositivos', element: only(STAFF, <DevicesPage />) },
+      { path: 'eventos', element: only(STAFF, <LogsPage />) },
+      { path: 'reglas', element: only(ADMIN, <RulesPage />) },
+      { path: 'usuarios', element: only(ADMIN, <UsersPage />) },
       { path: '*', element: <NotFound /> },
     ],
   },

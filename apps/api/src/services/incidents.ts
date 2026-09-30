@@ -1,5 +1,6 @@
 import type { Prisma } from '@prisma/client';
 import type {
+  AuditLogEntryDto,
   BBox,
   CreateIncidentInput,
   IncidentDto,
@@ -20,6 +21,7 @@ import {
 } from '../domain/incident-workflow.js';
 import { badRequest, conflict, forbidden, notFound } from '../lib/errors.js';
 import {
+  asObject,
   incidentInclude,
   toIncidentDto,
   toIncidentEventDto,
@@ -118,6 +120,85 @@ export async function listIncidentEvents(
     orderBy: [{ createdAt: 'asc' }, { id: 'asc' }],
   });
   return rows.map(toIncidentEventDto);
+}
+
+/** Cross-incident audit log (Logs view), newest first. */
+export async function listAuditLog(
+  ctx: ServiceContext,
+  filter: { from: Date; to: Date; eventTypes?: string[] },
+  page: { page: number; pageSize: number },
+): Promise<PaginatedResponse<AuditLogEntryDto>> {
+  const where: Prisma.IncidentEventWhereInput = {
+    createdAt: { gte: filter.from, lte: filter.to },
+    ...(filter.eventTypes && { eventType: { in: filter.eventTypes } }),
+  };
+  const [total, rows] = await ctx.prisma.$transaction([
+    ctx.prisma.incidentEvent.count({ where }),
+    ctx.prisma.incidentEvent.findMany({
+      where,
+      include: {
+        incident: {
+          select: { type: true, priority: true, device: { select: { deviceCode: true } } },
+        },
+      },
+      orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
+      skip: (page.page - 1) * page.pageSize,
+      take: page.pageSize,
+    }),
+  ]);
+  return {
+    data: rows.map((e) => ({
+      ...toIncidentEventDto(e),
+      incident_type: e.incident.type,
+      incident_priority: e.incident.priority,
+      device_code: e.incident.device?.deviceCode ?? null,
+    })),
+    meta: { page: page.page, page_size: page.pageSize, total },
+  };
+}
+
+/**
+ * Maintenance "ACEPTADA" step (PENDIENTE → ACEPTADA → EN ATENCIÓN → RESUELTA). The
+ * status enum has no "accepted" value (spec §3.1), so acceptance is recorded as an
+ * audit event plus metadata.accepted_at on an `assigned` incident.
+ */
+export async function acceptIncident(
+  ctx: ServiceContext,
+  id: string,
+  actor: WorkflowActor,
+): Promise<IncidentDto> {
+  const incident = await findOrThrow(ctx, id);
+  if (incident.status !== 'assigned') {
+    throw conflict('Solo se puede aceptar una incidencia asignada', { status: incident.status });
+  }
+  const isAssignee = incident.assignedToId === actor.id;
+  if (!isAssignee && actor.role !== 'admin') {
+    throw forbidden('Solo quien tiene asignada la incidencia puede aceptarla');
+  }
+  const metadata = asObject(incident.metadata);
+  if (typeof metadata.accepted_at === 'string') throw conflict('La incidencia ya fue aceptada');
+
+  const now = new Date();
+  await ctx.prisma.incident.update({
+    where: { id },
+    data: {
+      metadata: {
+        ...metadata,
+        accepted_at: now.toISOString(),
+        accepted_by: actor.id,
+      } as Prisma.InputJsonObject,
+      events: {
+        create: {
+          eventType: 'accepted',
+          payload: { actor: { kind: 'user', user_id: actor.id, role: actor.role } },
+          createdAt: now,
+        },
+      },
+    },
+  });
+  const dto = await getIncident(ctx, id);
+  ctx.hub.publish('incidents', 'updated', dto);
+  return dto;
 }
 
 /** Audit payload: user id and role only, never name/email (privacy). */

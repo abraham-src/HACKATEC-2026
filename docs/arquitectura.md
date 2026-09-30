@@ -118,6 +118,6 @@ En Docker, `web` es nginx: sirve el SPA y hace proxy de `/api/*` y `/ws` hacia `
 | 6    | Mapa MapLibre + edificios 3D + 12 capas                          | Hecha     |
 | 7    | Panel de incidencias + timeline en vivo                          | Hecha     |
 | 8    | Accesibilidad: rutas y alternativas                              | Hecha     |
-| 9    | Mantenimiento, reglas, usuarios, logs                            | Pendiente |
+| 9    | Mantenimiento, reglas, usuarios, logs                            | Hecha     |
 | 10   | Pulido visual, estados de error, offline                         | Pendiente |
 | 11   | E2E Playwright de los 6 escenarios + documentación final         | Pendiente |

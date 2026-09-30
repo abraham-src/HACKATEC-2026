@@ -13,6 +13,7 @@ import {
   useIncidentEvents,
   useSetPriority,
 } from '../../hooks/mutations';
+import { useAcceptIncident } from '../../hooks/admin';
 import { ApiError } from '../../lib/api';
 import { formatAge, formatCoords, formatDateTime, formatTime } from '../../lib/format';
 import { INCIDENT_TYPE_LABEL, PRIORITY_LABEL, ROLE_LABEL } from '../../lib/labels';
@@ -59,6 +60,7 @@ export function IncidentDetail({ id, onClose }: { id: string; onClose: () => voi
   const events = useIncidentEvents(id, canSeeLog);
   const assignees = useAssignees(isTriage);
   const action = useIncidentAction();
+  const accept = useAcceptIncident();
   const setPriority = useSetPriority();
   const navigate = useNavigate();
   const focusOn = useMapUi((s) => s.focusOn);
@@ -147,6 +149,25 @@ export function IncidentDetail({ id, onClose }: { id: string; onClose: () => voi
               <MapPin size={12} strokeWidth={1.5} aria-hidden /> Ver en mapa
             </button>
           </div>
+
+          {i.status === 'assigned' &&
+            typeof i.metadata.accepted_at !== 'string' &&
+            user &&
+            (i.assigned_to?.id === user.id || user.role === 'admin') && (
+              <div className="flex items-center gap-2 border-b border-line px-3 py-2">
+                <span className="text-[12px] text-fg-muted">
+                  Pendiente de aceptar por mantenimiento
+                </span>
+                <button
+                  type="button"
+                  disabled={accept.isPending}
+                  onClick={() => accept.mutate(i.id)}
+                  className="ml-auto rounded-sm border border-accent bg-accent px-2 py-1 text-[12px] text-white disabled:opacity-40"
+                >
+                  Aceptar
+                </button>
+              </div>
+            )}
 
           {actions.length > 0 && (
             <div className="space-y-2 border-b border-line px-3 py-2">

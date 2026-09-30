@@ -2,7 +2,7 @@ import { INCIDENT_PRIORITIES, INCIDENT_STATUSES, INCIDENT_TYPES } from '@simu/sh
 import type { FastifyPluginAsync } from 'fastify';
 import { z } from 'zod';
 import { toPointCollection } from '../lib/geojson.js';
-import { bboxParam, csvEnum, jsonObject, parse, uuidParam } from '../lib/validation.js';
+import { bboxParam, csvEnum, isoDate, jsonObject, parse, uuidParam } from '../lib/validation.js';
 import { currentActor, currentUser, type AuthGuards } from '../plugins/auth.js';
 import type { ServiceContext } from '../services/context.js';
 import * as incidents from '../services/incidents.js';
@@ -49,6 +49,17 @@ const NoteBody = z
   .object({ note: z.string().max(1000).optional() })
   .strict()
   .default({});
+const AuditQuery = z.object({
+  from: isoDate.optional(),
+  to: isoDate.optional(),
+  event_type: z
+    .string()
+    .optional()
+    .transform((s) => (s ? s.split(',').filter(Boolean) : undefined)),
+  page: z.coerce.number().int().min(1).default(1),
+  page_size: z.coerce.number().int().min(1).max(500).default(100),
+});
+
 const AssignBody = z
   .object({ user_id: z.string().uuid(), note: z.string().max(1000).optional() })
   .strict();
@@ -120,6 +131,23 @@ export function incidentRoutes(ctx: ServiceContext, guards: AuthGuards): Fastify
         assigneeId: body.user_id,
         note: body.note,
       });
+    });
+
+    app.post('/incidents/:id/accept', { preHandler: workers }, async (req) => {
+      const { id } = parse(uuidParam, req.params);
+      return incidents.acceptIncident(ctx, id, currentUser(req));
+    });
+
+    /** Cross-incident audit log for the Logs view. */
+    app.get('/incident-events', { preHandler: workers }, async (req) => {
+      const q = parse(AuditQuery, req.query);
+      const to = q.to ?? new Date();
+      const from = q.from ?? new Date(to.getTime() - 7 * 24 * 3600_000);
+      return incidents.listAuditLog(
+        ctx,
+        { from, to, eventTypes: q.event_type },
+        { page: q.page, pageSize: q.page_size },
+      );
     });
 
     app.post('/incidents/:id/resolve', { preHandler: workers }, async (req) => {

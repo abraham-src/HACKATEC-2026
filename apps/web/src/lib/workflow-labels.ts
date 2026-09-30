@@ -13,6 +13,7 @@ export const EVENT_LABEL: Record<string, string> = {
   created: 'Creada',
   validated: 'Validada',
   assigned: 'Asignada',
+  accepted: 'Aceptada por mantenimiento',
   started: 'Atención iniciada',
   resolved: 'Resuelta',
   rejected: 'Rechazada',

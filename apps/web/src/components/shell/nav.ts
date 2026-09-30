@@ -5,8 +5,12 @@ import {
   CircleAlert,
   Cpu,
   LayoutDashboard,
+  ListChecks,
   Map as MapIcon,
+  ScrollText,
   SlidersHorizontal,
+  Users,
+  Workflow,
 } from 'lucide-react';
 
 export interface NavItem {
@@ -20,14 +24,18 @@ export interface NavItem {
 
 const ALL: readonly RoleName[] = ['admin', 'operator', 'maintenance', 'citizen'];
 export const STAFF: readonly RoleName[] = ['admin', 'operator', 'maintenance'];
+export const ADMIN: readonly RoleName[] = ['admin'];
 
-/** Each view is added here in the phase that builds it. */
 export const NAV_ITEMS: readonly NavItem[] = [
   { to: '/', label: 'Dashboard', icon: LayoutDashboard, roles: ALL },
   { to: '/mapa', label: 'Mapa', icon: MapIcon, roles: ALL },
   { to: '/incidencias', label: 'Incidencias', icon: CircleAlert, roles: ALL },
+  { to: '/mantenimiento', label: 'Mantenimiento', icon: ListChecks, roles: STAFF },
   { to: '/accesibilidad', label: 'Accesibilidad', icon: Accessibility, roles: ALL },
   { to: '/dispositivos', label: 'Dispositivos', icon: Cpu, roles: STAFF },
+  { to: '/eventos', label: 'Logs / Eventos', icon: ScrollText, roles: STAFF },
+  { to: '/reglas', label: 'Reglas', icon: Workflow, roles: ADMIN },
+  { to: '/usuarios', label: 'Usuarios', icon: Users, roles: ADMIN },
   {
     to: '/simulator/control',
     label: 'Simulador de campo',

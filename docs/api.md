@@ -377,12 +377,28 @@ Mensajes de datos. Siempre traen `event` y nunca `type`:
 
 ### Usuarios
 
-| Método | Ruta               | Roles           | Notas                                                                                       |
-| ------ | ------------------ | --------------- | ------------------------------------------------------------------------------------------- |
-| GET    | `/users/assignees` | admin, operator | Personal de mantenimiento activo al que se puede asignar una incidencia. Solo `id` y `name` |
+| Método | Ruta                      | Roles           | Notas                                                                                                  |
+| ------ | ------------------------- | --------------- | ------------------------------------------------------------------------------------------------------ |
+| GET    | `/users/assignees`        | admin, operator | Personal de mantenimiento activo al que se puede asignar una incidencia. Solo `id` y `name`            |
+| GET    | `/users?q=&role=&status=` | admin           | `UserAdminDto[]`. Nunca expone el hash de contraseña                                                   |
+| POST   | `/users`                  | admin           | `{ name, email, password (mín. 8), role }`. Correo duplicado → 409                                     |
+| PATCH  | `/users/:id`              | admin           | `{ name?, role?, status?, password? }`. Cambiar rol o contraseña, o quitar acceso, revoca las sesiones |
+| DELETE | `/users/:id`              | admin           | Baja lógica: `status = inactive` y revoca sesiones. El historial conserva sus referencias              |
 
-## Pendiente en fases siguientes
+Un administrador no puede quitarse el rol, suspenderse ni desactivarse a sí mismo. Si lo intenta, recibe 409.
 
-| Endpoint         | Fase |
-| ---------------- | ---- |
-| CRUD de usuarios | 9    |
+### Mantenimiento y bitácora
+
+| Método | Ruta                                                      | Roles                                       | Notas                                                                                   |
+| ------ | --------------------------------------------------------- | ------------------------------------------- | --------------------------------------------------------------------------------------- |
+| POST   | `/incidents/:id/accept`                                   | quien tiene asignada la incidencia, o admin | Paso **ACEPTADA** del flujo de mantenimiento, ver abajo                                 |
+| GET    | `/incident-events?from=&to=&event_type=&page=&page_size=` | staff                                       | Bitácora de todas las incidencias, la más reciente primero. Por defecto, últimos 7 días |
+
+El flujo de mantenimiento es PENDIENTE → ACEPTADA → EN ATENCIÓN → RESUELTA. El enum `incident_status` de la especificación no tiene un valor "aceptada". Por eso, aceptar una incidencia `assigned` registra el evento `accepted` y agrega `metadata.accepted_at`. Así el tablero distingue PENDIENTE (asignada sin aceptar) de ACEPTADA.
+
+### Reglas: crear y eliminar
+
+| Método | Ruta         | Roles | Notas                                                                                                            |
+| ------ | ------------ | ----- | ---------------------------------------------------------------------------------------------------------------- |
+| POST   | `/rules`     | admin | `{ name, description, enabled?, sort_order?, conditions, action }`. El DSL se valida y un nombre duplicado → 409 |
+| DELETE | `/rules/:id` | admin | 204                                                                                                              |

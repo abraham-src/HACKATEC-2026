@@ -46,6 +46,12 @@ export interface AuthUserDto {
   status: UserStatus;
 }
 
+/** User as seen by administrators (GET /users). */
+export interface UserAdminDto extends AuthUserDto {
+  created_at: string;
+  updated_at: string;
+}
+
 export interface LoginRequest {
   email: string;
   password: string;
@@ -165,6 +171,13 @@ export interface IncidentEventDto {
   event_type: string;
   payload: JsonObject;
   created_at: string;
+}
+
+/** Row of GET /incident-events (cross-incident audit log). */
+export interface AuditLogEntryDto extends IncidentEventDto {
+  incident_type: IncidentType;
+  incident_priority: IncidentPriority;
+  device_code: string | null;
 }
 
 export interface CreateIncidentInput {
