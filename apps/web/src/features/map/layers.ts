@@ -436,3 +436,81 @@ export const INTERACTIVE_LAYERS = [
   'route-line',
   'flood-fill',
 ];
+
+/**
+ * Route-planner overlay (accessibility view), drawn above everything else.
+ * Feature property `role`: baseline | route | avoided | origin | destination.
+ */
+export const OVERLAY_LAYERS: LayerSpecification[] = [
+  {
+    id: 'overlay-baseline',
+    type: 'line',
+    source: 'overlay',
+    filter: ['==', ['get', 'role'], 'baseline'],
+    layout: { 'line-cap': 'round', 'line-join': 'round' },
+    paint: {
+      'line-color': COLORS.critical,
+      'line-width': 3,
+      'line-dasharray': [1.5, 1.5],
+      'line-opacity': 0.9,
+    },
+  },
+  {
+    id: 'overlay-route-casing',
+    type: 'line',
+    source: 'overlay',
+    filter: ['==', ['get', 'role'], 'route'],
+    layout: { 'line-cap': 'round', 'line-join': 'round' },
+    paint: { 'line-color': COLORS.base, 'line-width': 9 },
+  },
+  {
+    id: 'overlay-route',
+    type: 'line',
+    source: 'overlay',
+    filter: ['==', ['get', 'role'], 'route'],
+    layout: { 'line-cap': 'round', 'line-join': 'round' },
+    paint: {
+      'line-color': ['match', ['get', 'status'], 'alternative', COLORS.ok, COLORS.accent],
+      'line-width': 5,
+    },
+  },
+  {
+    id: 'overlay-avoided',
+    type: 'circle',
+    source: 'overlay',
+    filter: ['==', ['get', 'role'], 'avoided'],
+    paint: {
+      'circle-radius': ['interpolate', ['exponential', 2], ['zoom'], 14, 6, 18, 60],
+      'circle-color': COLORS.critical,
+      'circle-opacity': 0.15,
+      'circle-stroke-color': COLORS.critical,
+      'circle-stroke-width': 1.5,
+    },
+  },
+  {
+    id: 'overlay-endpoints',
+    type: 'circle',
+    source: 'overlay',
+    filter: ['in', ['get', 'role'], ['literal', ['origin', 'destination']]],
+    paint: {
+      'circle-radius': 9,
+      'circle-color': '#e6edf3',
+      'circle-stroke-color': COLORS.base,
+      'circle-stroke-width': 2,
+    },
+  },
+  {
+    id: 'overlay-endpoint-label',
+    type: 'symbol',
+    source: 'overlay',
+    filter: ['in', ['get', 'role'], ['literal', ['origin', 'destination']]],
+    layout: {
+      'text-field': ['match', ['get', 'role'], 'origin', 'A', 'B'],
+      'text-font': ['Noto Sans Regular'],
+      'text-size': 12,
+      'text-allow-overlap': true,
+      'text-ignore-placement': true,
+    },
+    paint: { 'text-color': COLORS.base },
+  },
+];

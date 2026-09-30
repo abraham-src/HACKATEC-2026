@@ -4,7 +4,14 @@ import maplibregl, { type GeoJSONSource, type Map as MapLibreMap } from 'maplibr
 import { Box, LocateFixed, Square } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import { registerIcons } from './icons';
-import { INTERACTIVE_LAYERS, LAYER_KEYS, MAP_LAYERS, RENDER_ORDER, type LayerKey } from './layers';
+import {
+  INTERACTIVE_LAYERS,
+  LAYER_KEYS,
+  MAP_LAYERS,
+  OVERLAY_LAYERS,
+  RENDER_ORDER,
+  type LayerKey,
+} from './layers';
 import { popupHtml } from './popup';
 import { EMPTY_FC } from './sources';
 import { useMapUi } from './store';
@@ -22,18 +29,41 @@ const HOME = {
   pitch: 52,
   bearing: -18,
 };
+export type MapCamera = typeof HOME;
+
+export interface MapViewProps {
+  sources: MapSources;
+  hiddenKeys: readonly LayerKey[];
+  /** Per-view layer visibility that wins over the user's toggles (e.g. accessibility view). */
+  layerOverride?: Partial<Record<LayerKey, boolean>>;
+  /** Route-planner overlay (see OVERLAY_LAYERS). */
+  overlay?: FeatureCollection;
+  /** When set, a map click picks a coordinate instead of opening a popup. */
+  onPick?: ((lngLat: [number, number]) => void) | null;
+  /** Fit the camera to these bounds whenever the object changes. */
+  fit?: { bounds: [[number, number], [number, number]]; nonce: number } | null;
+  /** Initial camera (defaults to the city overview). */
+  initialView?: Partial<MapCamera>;
+}
+
+const popup = () => new maplibregl.Popup({ maxWidth: '320px', className: 'simu-popup-wrap' });
 
 export function MapView({
   sources,
   hiddenKeys,
-}: {
-  sources: MapSources;
-  hiddenKeys: readonly LayerKey[];
-}) {
+  layerOverride,
+  overlay,
+  onPick = null,
+  fit = null,
+  initialView,
+}: MapViewProps) {
   const container = useRef<HTMLDivElement>(null);
   const mapRef = useRef<MapLibreMap | null>(null);
   const popupRef = useRef<maplibregl.Popup | null>(null);
   const latest = useRef(sources);
+  const latestOverlay = useRef(overlay);
+  const pickRef = useRef(onPick);
+  const home = useRef<MapCamera>({ ...HOME, ...initialView });
   const [ready, setReady] = useState(false);
   const [loadError, setLoadError] = useState<string | null>(null);
 
@@ -43,6 +73,8 @@ export function MapView({
   const setPitched = useMapUi((s) => s.setPitched);
 
   latest.current = sources;
+  latestOverlay.current = overlay;
+  pickRef.current = onPick;
 
   // Create the map once.
   useEffect(() => {
@@ -50,7 +82,7 @@ export function MapView({
     const map = new maplibregl.Map({
       container: container.current,
       style: buildBaseStyle(),
-      ...HOME,
+      ...home.current,
       maxPitch: 70,
       attributionControl: { compact: true },
     });
@@ -72,20 +104,27 @@ export function MapView({
           map.addSource(id, { type: 'geojson', data: latest.current[id] ?? EMPTY_FC });
         }
         for (const key of RENDER_ORDER) for (const layer of MAP_LAYERS[key]) map.addLayer(layer);
+        map.addSource('overlay', { type: 'geojson', data: latestOverlay.current ?? EMPTY_FC });
+        for (const layer of OVERLAY_LAYERS) map.addLayer(layer);
 
         for (const id of INTERACTIVE_LAYERS) {
-          map.on('mouseenter', id, () => (map.getCanvas().style.cursor = 'pointer'));
-          map.on('mouseleave', id, () => (map.getCanvas().style.cursor = ''));
+          map.on('mouseenter', id, () => {
+            if (!pickRef.current) map.getCanvas().style.cursor = 'pointer';
+          });
+          map.on('mouseleave', id, () => {
+            map.getCanvas().style.cursor = pickRef.current ? 'crosshair' : '';
+          });
         }
         map.on('click', (e) => {
+          if (pickRef.current) {
+            pickRef.current([e.lngLat.lng, e.lngLat.lat]);
+            return;
+          }
           const layers = INTERACTIVE_LAYERS.filter((id) => map.getLayer(id));
           const [feature] = map.queryRenderedFeatures(e.point, { layers });
           if (!feature) return;
           popupRef.current?.remove();
-          popupRef.current = new maplibregl.Popup({
-            maxWidth: '320px',
-            className: 'simu-popup-wrap',
-          })
+          popupRef.current = popup()
             .setLngLat(e.lngLat)
             .setHTML(popupHtml(feature.properties ?? {}))
             .addTo(map);
@@ -111,26 +150,45 @@ export function MapView({
     }
   }, [ready, sources]);
 
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!ready || !map) return;
+    (map.getSource('overlay') as GeoJSONSource | undefined)?.setData(overlay ?? EMPTY_FC);
+  }, [ready, overlay]);
+
+  // Crosshair while picking a point.
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!ready || !map) return;
+    map.getCanvas().style.cursor = onPick ? 'crosshair' : '';
+  }, [ready, onPick]);
+
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!ready || !map || !fit) return;
+    map.fitBounds(fit.bounds, { padding: 80, maxZoom: 17, duration: 800 });
+  }, [ready, fit]);
+
   // Layer toggles.
   useEffect(() => {
     const map = mapRef.current;
     if (!ready || !map) return;
     for (const key of LAYER_KEYS) {
-      const show = visible[key] && !hiddenKeys.includes(key);
+      const show = (layerOverride?.[key] ?? visible[key]) && !hiddenKeys.includes(key);
       for (const layer of MAP_LAYERS[key]) {
         if (map.getLayer(layer.id))
           map.setLayoutProperty(layer.id, 'visibility', show ? 'visible' : 'none');
       }
     }
-  }, [ready, visible, hiddenKeys]);
+  }, [ready, visible, hiddenKeys, layerOverride]);
 
   // 2D / 3D
   useEffect(() => {
     const map = mapRef.current;
     if (!ready || !map) return;
     map.easeTo({
-      pitch: pitched ? HOME.pitch : 0,
-      bearing: pitched ? HOME.bearing : 0,
+      pitch: pitched ? home.current.pitch : 0,
+      bearing: pitched ? home.current.bearing : 0,
       duration: 600,
     });
     if (map.getLayer('building-3d')) {
@@ -142,16 +200,13 @@ export function MapView({
     }
   }, [ready, pitched]);
 
-  // Focus requests from the incident panel.
+  // Focus requests (incident panel, "Ver en mapa").
   useEffect(() => {
     const map = mapRef.current;
     if (!ready || !map || !focus) return;
     map.flyTo({ center: [focus.lng, focus.lat], zoom: Math.max(map.getZoom(), 16), duration: 900 });
     popupRef.current?.remove();
-    popupRef.current = new maplibregl.Popup({ maxWidth: '320px', className: 'simu-popup-wrap' })
-      .setLngLat([focus.lng, focus.lat])
-      .setHTML(focus.html)
-      .addTo(map);
+    popupRef.current = popup().setLngLat([focus.lng, focus.lat]).setHTML(focus.html).addTo(map);
   }, [ready, focus]);
 
   return (
@@ -192,9 +247,9 @@ export function MapView({
           type="button"
           onClick={() =>
             mapRef.current?.flyTo({
-              ...HOME,
-              pitch: pitched ? HOME.pitch : 0,
-              bearing: pitched ? HOME.bearing : 0,
+              ...home.current,
+              pitch: pitched ? home.current.pitch : 0,
+              bearing: pitched ? home.current.bearing : 0,
             })
           }
           className="inline-flex items-center gap-1.5 rounded-sm border border-line bg-surface px-2 py-1 text-[12px] text-fg hover:border-accent"

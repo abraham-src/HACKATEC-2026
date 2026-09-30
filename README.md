@@ -4,7 +4,7 @@ Sistema Inteligente de Monitoreo Urbano para la Ciudad de México. Integra cáma
 
 Esta entrega funciona **solo con datos simulados**: no requiere hardware ni el servicio de IA real.
 
-> **Estado:** Fase 7 de 11. Ya están listos la API, el simulador, el dashboard, el mapa 3D con 12 capas, el panel de incidencias con flujo completo por rol, la tabla de dispositivos y la línea de tiempo en vivo. La ruta accesible alternativa llega en la Fase 8. Plan completo en [docs/arquitectura.md](docs/arquitectura.md#plan-de-fases).
+> **Estado:** Fase 8 de 11. Ya están listos la API, el simulador, el dashboard, el mapa 3D con 12 capas, las incidencias con flujo por rol, los dispositivos, la línea de tiempo y las rutas accesibles con alternativas sobre calles reales. Faltan las vistas de mantenimiento y administración (Fase 9), el pulido (Fase 10) y las pruebas E2E con la documentación final (Fase 11). Plan completo en [docs/arquitectura.md](docs/arquitectura.md#plan-de-fases).
 
 Sin Docker en Windows: ver [docs/desarrollo.md](docs/desarrollo.md#opción-c-windows-sin-docker).
 
@@ -136,14 +136,14 @@ Los mismos controles existen como REST: `POST /control/internet`, `/control/drai
 
 ### Escenarios de demo
 
-| #   | Escenario                 | Qué pasa                                                                                                  |
-| --- | ------------------------- | --------------------------------------------------------------------------------------------------------- |
-| 1   | Operación normal          | Niveles habituales, sin lluvia, todo en línea                                                             |
-| 2   | Coladera obstruyéndose    | DRAIN-001 pasa por 42 %, 71 % y 88 %, y el motor emite ALERTA                                             |
-| 3   | Cámara detecta incidencia | CAM-001 detecta un obstáculo y aparece como incidencia en vivo                                            |
-| 4   | Riesgo combinado          | 88 %, lluvia y agua detectada elevan la incidencia a RIESGO CRÍTICO                                       |
-| 5   | Accesibilidad             | CAM-001 detecta un bloqueo sobre la ruta accesible. La ruta alternativa llega en la Fase 8                |
-| 6   | Pérdida de conectividad   | 100 s sin Internet: se acumula en SQLite, los dispositivos pasan a OFFLINE y todo se sincroniza al volver |
+| #   | Escenario                 | Qué pasa                                                                                                                           |
+| --- | ------------------------- | ---------------------------------------------------------------------------------------------------------------------------------- |
+| 1   | Operación normal          | Niveles habituales, sin lluvia, todo en línea                                                                                      |
+| 2   | Coladera obstruyéndose    | DRAIN-001 pasa por 42 %, 71 % y 88 %, y el motor emite ALERTA                                                                      |
+| 3   | Cámara detecta incidencia | CAM-001 detecta un obstáculo y aparece como incidencia en vivo                                                                     |
+| 4   | Riesgo combinado          | 88 %, lluvia y agua detectada elevan la incidencia a RIESGO CRÍTICO                                                                |
+| 5   | Accesibilidad             | CAM-001 detecta un bloqueo en Álvaro Obregón y Orizaba. En **Accesibilidad**, la ruta se recalcula sola por Córdoba y usa la rampa |
+| 6   | Pérdida de conectividad   | 100 s sin Internet: se acumula en SQLite, los dispositivos pasan a OFFLINE y todo se sincroniza al volver                          |
 
 ## Comandos frecuentes
 

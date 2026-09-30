@@ -1,6 +1,13 @@
 import type { RoleName } from '@simu/shared-types';
 import type { LucideIcon } from 'lucide-react';
-import { CircleAlert, Cpu, LayoutDashboard, Map as MapIcon, SlidersHorizontal } from 'lucide-react';
+import {
+  Accessibility,
+  CircleAlert,
+  Cpu,
+  LayoutDashboard,
+  Map as MapIcon,
+  SlidersHorizontal,
+} from 'lucide-react';
 
 export interface NavItem {
   to: string;
@@ -19,6 +26,7 @@ export const NAV_ITEMS: readonly NavItem[] = [
   { to: '/', label: 'Dashboard', icon: LayoutDashboard, roles: ALL },
   { to: '/mapa', label: 'Mapa', icon: MapIcon, roles: ALL },
   { to: '/incidencias', label: 'Incidencias', icon: CircleAlert, roles: ALL },
+  { to: '/accesibilidad', label: 'Accesibilidad', icon: Accessibility, roles: ALL },
   { to: '/dispositivos', label: 'Dispositivos', icon: Cpu, roles: STAFF },
   {
     to: '/simulator/control',

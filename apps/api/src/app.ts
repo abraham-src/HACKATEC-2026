@@ -6,6 +6,7 @@ import { Prisma, type PrismaClient } from '@prisma/client';
 import type { ApiError } from '@simu/shared-types';
 import Fastify, { type FastifyError, type FastifyInstance } from 'fastify';
 import { createTokenService } from './auth/tokens.js';
+import { loadGraph } from './domain/pedestrian-graph.js';
 import type { Config } from './config.js';
 import { AppError } from './lib/errors.js';
 import { createAuthGuards } from './plugins/auth.js';
@@ -120,12 +121,15 @@ export async function buildApp({
   await app.register(authRoutes(ctx, guards));
   await app.register(deviceRoutes(ctx, guards));
   await app.register(incidentRoutes(ctx, guards));
-  await app.register(accessibilityRoutes(ctx, guards));
+  const gisDir = path.resolve(process.cwd(), config.GIS_DIR);
+  // Pedestrian network loaded once (OSM-derived, ~4.6k edges).
+  const graph = loadGraph(path.join(gisDir, 'pedestrian-network.geojson'));
+  await app.register(accessibilityRoutes(ctx, guards, graph));
   await app.register(ruleRoutes(ctx, guards));
   await app.register(eventRoutes(ctx, guards));
   await app.register(aiRoutes(ctx, guards));
   await app.register(userRoutes(ctx, guards));
-  await app.register(gisRoutes(path.resolve(process.cwd(), config.GIS_DIR), guards));
+  await app.register(gisRoutes(gisDir, guards));
   await app.register(wsRoutes(hub, guards));
 
   return app;

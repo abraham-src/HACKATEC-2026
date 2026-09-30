@@ -89,6 +89,14 @@ En Docker, `web` es nginx: sirve el SPA y hace proxy de `/api/*` y `/ws` hacia `
 - **Ciudadanía.** Las capas de dispositivos se ocultan para la ciudadanía, porque la API no le entrega esos datos.
 - **Nota de CSS.** `maplibre-gl.css` fuerza `position: relative` en el contenedor, así que este necesita tamaño explícito (`h-full`) y la fila de la grilla debe ser definida.
 
+**Rutas accesibles.**
+
+- **Red peatonal.** La red viene de OpenStreetMap. `scripts/build-pedestrian-network.mjs` la descarga una sola vez con la API Overpass, la parte en intersecciones y la guarda en `database/gis`. La API nunca llama a Overpass en tiempo de ejecución. Datos © colaboradores de OpenStreetMap, licencia ODbL.
+- **Coordenadas del seed.** Los dispositivos, puntos de accesibilidad, incidencias y rutas del seed están en esquinas reales de esa misma red. Así las rampas coinciden con los cruces que el router evalúa.
+- **Código puro y reglas.** `domain/pedestrian-graph.ts` contiene el grafo y el A\*, sin base de datos. `services/accessible-routing.ts` convierte puntos de accesibilidad e incidencias activas en costos y bloqueos: rampas, escaleras, obstáculos y banquetas dañadas.
+- **Por qué A\* en Node y no pgRouting.** La red es pequeña, unas 7 000 intersecciones, y el cálculo tarda milisegundos. Además, la imagen `postgis/postgis` no trae pgRouting.
+- **Recalculo automático.** En la web, la consulta de la ruta vive bajo la clave `incidents`. Cualquier incidencia nueva que llega por WebSocket la invalida, así que una ruta bloqueada se recalcula sola y muestra la alternativa.
+
 ## Tolerancia a fallos (resumen)
 
 | Falla                          | Comportamiento                                                         | Fase  |
@@ -109,7 +117,7 @@ En Docker, `web` es nginx: sirve el SPA y hace proxy de `/api/*` y `/ws` hacia `
 | 5    | Frontend: layout, login, dashboard                               | Hecha     |
 | 6    | Mapa MapLibre + edificios 3D + 12 capas                          | Hecha     |
 | 7    | Panel de incidencias + timeline en vivo                          | Hecha     |
-| 8    | Accesibilidad: rutas y alternativas                              | Pendiente |
+| 8    | Accesibilidad: rutas y alternativas                              | Hecha     |
 | 9    | Mantenimiento, reglas, usuarios, logs                            | Pendiente |
 | 10   | Pulido visual, estados de error, offline                         | Pendiente |
 | 11   | E2E Playwright de los 6 escenarios + documentación final         | Pendiente |

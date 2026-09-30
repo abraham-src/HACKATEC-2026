@@ -1,4 +1,9 @@
-import type { AccessibilityPointDto, AccessibleRouteDto, RuleDto } from '@simu/shared-types';
+import type {
+  AccessibilityPointDto,
+  AccessibleRouteDto,
+  RouteComputation,
+  RuleDto,
+} from '@simu/shared-types';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import {
   bearer,
@@ -54,24 +59,140 @@ describe.skipIf(!hasTestDb)('accessibility', () => {
 
   it('finds routes near an origin/destination using geography distance', async () => {
     const near = await get(
-      '/accessibility/routes?origin=-99.1590,19.4200&destination=-99.1574,19.4189&radius_m=50',
+      '/accessibility/routes?origin=-99.1602,19.4199&destination=-99.1573,19.4187&radius_m=50',
     );
     const names = near.json<{ data: AccessibleRouteDto[] }>().data.map((r) => r.name);
-    expect(names).toEqual(['Orizaba (Colima) → Álvaro Obregón y Córdoba por camellón']);
+    expect(names).toEqual(['Orizaba y Colima → Álvaro Obregón y Mérida por Córdoba']);
 
     const far = await get('/accessibility/routes?origin=-99.1627,19.3501&radius_m=50');
     expect(far.json<{ data: AccessibleRouteDto[] }>().data).toHaveLength(0);
 
     expect((await get('/accessibility/routes?origin=abc')).statusCode).toBe(400);
   });
+});
 
-  it('reports route alternatives as not implemented yet (Phase 8)', async () => {
+/** Local metric distance (fine at street scale). */
+function meters(a: [number, number], b: [number, number]): number {
+  const kx = 111_320 * Math.cos((a[1] * Math.PI) / 180);
+  return Math.hypot((a[0] - b[0]) * kx, (a[1] - b[1]) * 110_540);
+}
+const minDistance = (coords: [number, number][], p: [number, number]) =>
+  Math.min(...coords.map((c) => meters(c, p)));
+
+/** Scenario 5 (docs/escenarios-demo.md): accessible route with an alternative around obstacles. */
+describe.skipIf(!hasTestDb)('accessible routing (scenario 5)', () => {
+  let t: TestContext;
+  let tok: Record<DemoRole, string>;
+  beforeAll(async () => {
+    t = await createTestApp();
+    tok = await tokensFor(t.app);
+  });
+  afterAll(async () => t?.close());
+
+  const ORIGIN: [number, number] = [-99.160194, 19.41985]; // Orizaba y Colima
+  const DEST: [number, number] = [-99.157323, 19.418656]; // Álvaro Obregón y Mérida
+  const WORKS: [number, number] = [-99.15916, 19.4184]; // seeded construction on Álvaro Obregón
+
+  const compute = async (accessible = true) => {
+    const res = await t.app.inject({
+      method: 'GET',
+      url: `/accessibility/routes?origin=${ORIGIN.join(',')}&destination=${DEST.join(',')}&accessible=${accessible}`,
+      headers: bearer(tok.citizen),
+    });
+    expect(res.statusCode).toBe(200);
+    return res.json<{ data: AccessibleRouteDto[]; computed: RouteComputation }>().computed;
+  };
+
+  it('detours around the construction and says what it avoided', async () => {
+    const c = await compute();
+    expect(c.found).toBe(true);
+    expect(c.status).toBe('alternative');
+    expect(c.avoided.length).toBeGreaterThan(0);
+    expect(c.avoided.some((b) => b.label.includes('Álvaro Obregón'))).toBe(true);
+
+    const route = c.route!.path.coordinates as [number, number][];
+    expect(minDistance(route, WORKS)).toBeGreaterThan(15);
+    // The blocked direct route goes right through it.
+    expect(minDistance(c.baseline!.path.coordinates as [number, number][], WORKS)).toBeLessThan(25);
+    expect(c.route!.length_m).toBeGreaterThanOrEqual(c.baseline!.length_m);
+    expect(c.route!.duration_min).toBeGreaterThanOrEqual(1);
+    expect(c.route!.steps.at(-1)?.instruction).toBe('Llegas a tu destino');
+  });
+
+  it('re-routes when a new accessibility block appears on the alternative', async () => {
+    const before = await compute();
+    const path = before.route!.path.coordinates as [number, number][];
+    const mid = path[Math.floor(path.length / 2)]!;
+
+    const created = await t.app.inject({
+      method: 'POST',
+      url: '/incidents',
+      headers: bearer(tok.operator),
+      payload: {
+        type: 'accessibility_block',
+        description: 'Coche estacionado sobre la rampa',
+        longitude: mid[0],
+        latitude: mid[1],
+      },
+    });
+    expect(created.statusCode).toBe(201);
+
+    const after = await compute();
+    if (after.found) {
+      expect(minDistance(after.route!.path.coordinates as [number, number][], mid)).toBeGreaterThan(
+        20,
+      );
+    } else {
+      expect(after.message).toMatch(/No hay ruta accesible/);
+    }
+  });
+
+  it('computes and stores an alternative that avoids extra points', async () => {
     const res = await t.app.inject({
       method: 'POST',
       url: '/accessibility/routes/alternative',
       headers: bearer(tok.citizen),
+      payload: {
+        origin: ORIGIN,
+        destination: DEST,
+        accessible: true,
+        avoid: [{ lng: -99.158, lat: 19.4195, radius_m: 30 }],
+      },
     });
-    expect(res.statusCode).toBe(501);
+    expect([200, 201]).toContain(res.statusCode);
+    const body = res.json<{ computed: RouteComputation; saved_id: string | null }>();
+    if (body.computed.found) {
+      expect(body.saved_id).toMatch(/^[0-9a-f-]{36}$/);
+      const list = await t.app.inject({
+        method: 'GET',
+        url: '/accessibility/routes',
+        headers: bearer(tok.citizen),
+      });
+      expect(
+        list.json<{ data: AccessibleRouteDto[] }>().data.some((r) => r.id === body.saved_id),
+      ).toBe(true);
+    }
+  });
+
+  it('rejects points outside the pedestrian network', async () => {
+    const res = await t.app.inject({
+      method: 'GET',
+      url: '/accessibility/routes?origin=-99.2500,19.5000&destination=-99.1573,19.4190',
+      headers: bearer(tok.citizen),
+    });
+    const c = res.json<{ computed: RouteComputation }>().computed;
+    expect(c.found).toBe(false);
+    expect(c.message).toMatch(/fuera de la red peatonal/);
+  });
+
+  it('validates the alternative request', async () => {
+    const res = await t.app.inject({
+      method: 'POST',
+      url: '/accessibility/routes/alternative',
+      headers: bearer(tok.citizen),
+      payload: { origin: [-99.15, 19.42] },
+    });
+    expect(res.statusCode).toBe(400);
   });
 });
 

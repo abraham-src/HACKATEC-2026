@@ -204,6 +204,54 @@ export interface AccessibleRouteDto {
   metadata: JsonObject;
 }
 
+/** Something the router avoided (or would have to cross). */
+export interface RouteBlocker {
+  kind: 'incident' | 'accessibility_point' | 'manual';
+  id: string | null;
+  label: string;
+  latitude: number;
+  longitude: number;
+  radius_m: number;
+}
+
+export interface RouteStep {
+  instruction: string;
+  distance_m: number;
+  street: string | null;
+}
+
+export interface ComputedRoute {
+  path: GeoJsonLineString;
+  length_m: number;
+  duration_min: number;
+  /** Ramps at the corners this route crosses. */
+  ramps: Array<{ id: string; name: string | null; latitude: number; longitude: number }>;
+  steps: RouteStep[];
+}
+
+/** Result of computing a route between two points (spec §7.2 Accesibilidad). */
+export interface RouteComputation {
+  found: boolean;
+  accessible: boolean;
+  /** active = the direct route is clear; alternative = it detours around blockers. */
+  status: 'active' | 'alternative' | 'none';
+  route: ComputedRoute | null;
+  /** The route ignoring blockers, shown when an alternative was needed. */
+  baseline: (ComputedRoute & { blocked_by: RouteBlocker[] }) | null;
+  avoided: RouteBlocker[];
+  origin_snap_m: number;
+  destination_snap_m: number;
+  message: string;
+}
+
+export interface RouteRequest {
+  origin: LngLatTuple;
+  destination: LngLatTuple;
+  accessible?: boolean;
+  /** Extra points to avoid (e.g. a closure reported by phone). */
+  avoid?: Array<{ lng: number; lat: number; radius_m?: number }>;
+}
+
 // ───────────────────────────── Rules ─────────────────────────────
 
 export interface RuleDto {

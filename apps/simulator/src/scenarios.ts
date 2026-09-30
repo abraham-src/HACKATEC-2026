@@ -113,7 +113,7 @@ export const SCENARIOS: readonly ScenarioDef[] = [
     id: 5,
     name: 'Accesibilidad: ruta alternativa con rampa',
     description:
-      'CAM-001 detecta un bloqueo de accesibilidad sobre la ruta de Roma Norte; la ruta accesible debe evitarlo (cálculo en Fase 8).',
+      'CAM-001 detecta un bloqueo de accesibilidad en Álvaro Obregón y Orizaba. En la vista Accesibilidad, la ruta Orizaba y Colima → Álvaro Obregón y Mérida se recalcula sola y usa la rampa de Córdoba.',
     steps: [
       {
         at: 0,

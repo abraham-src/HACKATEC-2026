@@ -168,11 +168,34 @@ Para mantenimiento: PENDIENTE = `assigned`, EN ATENCIÓN = `in_progress`, RESUEL
 
 ### Accesibilidad
 
-| Método | Ruta                                                                                    | Notas                                                                                             |
-| ------ | --------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------- |
-| GET    | `/accessibility/points?type=&status=&bbox=&format=`                                     | Las rampas incluyen `ramp.slope` y `ramp.width_m`                                                 |
-| GET    | `/accessibility/routes?origin=lng,lat&destination=lng,lat&accessible=true&radius_m=300` | Rutas guardadas cuyos extremos están dentro de `radius_m` metros. Usa distancia real en geografía |
-| POST   | `/accessibility/routes/alternative`                                                     | **501** hasta la Fase 8                                                                           |
+| Método | Ruta                                                                                    | Notas                                                                                                                                                                    |
+| ------ | --------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| GET    | `/accessibility/points?type=&status=&bbox=&format=`                                     | Las rampas incluyen `ramp.slope` y `ramp.width_m`                                                                                                                        |
+| GET    | `/accessibility/routes?origin=lng,lat&destination=lng,lat&accessible=true&radius_m=300` | `data`: rutas guardadas cuyos extremos están dentro de `radius_m` m. Con origen y destino agrega `computed` (`RouteComputation`): la mejor ruta por la red peatonal      |
+| POST   | `/accessibility/routes/alternative`                                                     | `{ origin: [lng,lat], destination: [lng,lat], accessible?, avoid?: [{ lng, lat, radius_m? }] }`. Calcula evitando además esos puntos y guarda la ruta (201 + `saved_id`) |
+
+#### Cálculo de rutas accesibles
+
+La red peatonal (`database/gis/pedestrian-network.geojson`) proviene de OpenStreetMap: son 4 610 tramos de calle en Roma Norte, Condesa, Centro Histórico y Coyoacán. El algoritmo es A*.
+
+| Regla                                                                                                       | Modo accesible | Modo normal |
+| ----------------------------------------------------------------------------------------------------------- | -------------- | ----------- |
+| Incidencia activa que obstruye (bloqueo de accesibilidad, obstáculo, accidente, falla, agua; radio 25–40 m) | bloquea        | bloquea     |
+| Obstáculo o punto inhabilitado con estado `blocked` (radio 20 m)                                            | bloquea        | ignora      |
+| Escaleras                                                                                                   | prohibidas     | permitidas  |
+| Esquina con rampa disponible (a 25 m)                                                                       | sin costo      | —           |
+| Esquina con rampa dañada                                                                                    | +250 m         | —           |
+| Esquina sin información de rampa                                                                            | +35 m          | —           |
+| Tramo junto a ruta accesible marcada                                                                        | ×0.85          | —           |
+| Banqueta dañada                                                                                             | ×1.6           | —           |
+
+La respuesta indica `status`:
+
+- `active`: la ruta directa está libre.
+- `alternative`: la ruta directa cruza un obstáculo. `baseline` trae la ruta directa y `avoided`, lo que se evitó.
+- `none`: todo está bloqueado, o el punto queda a más de 300 m de la red.
+
+Incluye además distancia, tiempo (0.9 m/s en modo accesible, 1.3 m/s en modo normal), rampas usadas e indicaciones calle por calle.
 
 ### Reglas
 
@@ -360,7 +383,6 @@ Mensajes de datos. Siempre traen `event` y nunca `type`:
 
 ## Pendiente en fases siguientes
 
-| Endpoint                                 | Fase |
-| ---------------------------------------- | ---- |
-| `POST /accessibility/routes/alternative` | 8    |
-| CRUD de usuarios                         | 9    |
+| Endpoint         | Fase |
+| ---------------- | ---- |
+| CRUD de usuarios | 9    |

@@ -2,6 +2,7 @@ import { createBrowserRouter, Link } from 'react-router-dom';
 import { AppShell } from '../components/shell/AppShell';
 import { STAFF } from '../components/shell/nav';
 import { RequireAuth } from '../components/shell/RequireAuth';
+import { AccessibilityPage } from '../pages/AccessibilityPage';
 import { DashboardPage } from '../pages/DashboardPage';
 import { DevicesPage } from '../pages/DevicesPage';
 import { IncidentsPage } from '../pages/IncidentsPage';
@@ -32,6 +33,7 @@ export const router = createBrowserRouter([
       { index: true, element: <DashboardPage /> },
       { path: 'mapa', element: <MapPage /> },
       { path: 'incidencias', element: <IncidentsPage /> },
+      { path: 'accesibilidad', element: <AccessibilityPage /> },
       {
         path: 'dispositivos',
         element: (
