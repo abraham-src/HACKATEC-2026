@@ -43,7 +43,7 @@ export function IncidentSidePanel({
 
   return (
     <aside
-      className="flex min-h-0 flex-col border-l border-line bg-surface"
+      className="hidden min-h-0 flex-col border-l border-line bg-surface xl:flex"
       aria-label="Incidencias activas"
     >
       <div className="flex h-8 shrink-0 items-center gap-2 border-b border-line bg-surface-2 px-3">

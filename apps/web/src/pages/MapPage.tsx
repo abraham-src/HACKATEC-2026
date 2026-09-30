@@ -77,7 +77,8 @@ export function MapPage() {
 
   return (
     // Explicit row track: without it the row is auto-sized and the map's h-full collapses.
-    <div className="grid h-full min-h-0 grid-cols-[220px_minmax(0,1fr)_300px] grid-rows-[minmax(0,1fr)]">
+    // Below 1280 px the incident panel is hidden so the map keeps a usable width.
+    <div className="grid h-full min-h-0 grid-cols-[220px_minmax(0,1fr)] grid-rows-[minmax(0,1fr)] xl:grid-cols-[220px_minmax(0,1fr)_300px]">
       <LayerPanel counts={counts} staff={staff} />
       <MapView sources={sources} hiddenKeys={hiddenKeys} />
       <IncidentSidePanel incidents={incidents.data?.data ?? []} loading={incidents.isLoading} />

@@ -20,6 +20,7 @@ import {
   INCIDENT_TYPE_LABEL,
   PRIORITY_LABEL,
 } from '../lib/labels';
+import { rowActivation } from '../lib/row-activation';
 import { useAuth } from '../stores/auth';
 
 const PAGE_SIZE = 25;
@@ -258,9 +259,9 @@ export function IncidentsPage() {
                   <tr
                     // Remount on update → subtle fade-in marks rows that just changed live.
                     key={`${i.id}-${i.updated_at}`}
-                    onClick={() => update({ id: i.id }, false)}
+                    {...rowActivation(() => update({ id: i.id }, false))}
                     aria-selected={selected === i.id}
-                    className={`animate-fade-in cursor-pointer border-b border-line hover:bg-surface-2 ${
+                    className={`animate-fade-in cursor-pointer border-b border-line hover:bg-surface-2 focus-visible:outline focus-visible:outline-1 focus-visible:-outline-offset-1 focus-visible:outline-accent ${
                       selected === i.id ? 'bg-accent/10' : ''
                     }`}
                   >

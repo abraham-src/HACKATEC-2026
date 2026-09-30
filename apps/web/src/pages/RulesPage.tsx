@@ -8,6 +8,7 @@ import { useDeleteRule, useRules, useSaveRule } from '../hooks/admin';
 import { ApiError } from '../lib/api';
 import { formatDateTime } from '../lib/format';
 import { INCIDENT_TYPE_LABEL, PRIORITY_LABEL } from '../lib/labels';
+import { rowActivation } from '../lib/row-activation';
 import {
   BOOLEAN_FACTS,
   describeConditions,
@@ -477,8 +478,8 @@ export function RulesPage() {
                   return (
                     <tr
                       key={r.id}
-                      onClick={() => isAdmin && setEditing(toDraft(r))}
-                      className={`border-b border-line ${isAdmin ? 'cursor-pointer hover:bg-surface-2' : ''} ${editing?.id === r.id ? 'bg-accent/10' : ''}`}
+                      {...(isAdmin ? rowActivation(() => setEditing(toDraft(r))) : {})}
+                      className={`border-b border-line ${isAdmin ? 'cursor-pointer hover:bg-surface-2 focus-visible:outline focus-visible:outline-1 focus-visible:-outline-offset-1 focus-visible:outline-accent' : ''} ${editing?.id === r.id ? 'bg-accent/10' : ''}`}
                     >
                       <td className="px-3 py-1.5 font-mono text-[12px]">{r.sort_order}</td>
                       <td className="px-3 py-1.5">

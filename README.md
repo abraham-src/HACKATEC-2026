@@ -4,7 +4,7 @@ Sistema Inteligente de Monitoreo Urbano para la Ciudad de México. Integra cáma
 
 Esta entrega funciona **solo con datos simulados**: no requiere hardware ni el servicio de IA real.
 
-> **Estado:** Fase 9 de 11. Todas las vistas de la especificación están listas: login, dashboard, mapa 3D con 12 capas, incidencias, mantenimiento, accesibilidad, dispositivos, reglas, usuarios y logs. Faltan el pulido visual y de estados de error (Fase 10) y las pruebas E2E con la documentación final (Fase 11). Plan completo en [docs/arquitectura.md](docs/arquitectura.md#plan-de-fases).
+> **Estado:** Fase 10 de 11. Todas las vistas de la especificación están listas: login, dashboard, mapa 3D con 12 capas, incidencias, mantenimiento, accesibilidad, dispositivos, reglas, usuarios y logs. También están los estados de error y sin conexión. Faltan las pruebas E2E con la documentación final (Fase 11). Plan completo en [docs/arquitectura.md](docs/arquitectura.md#plan-de-fases).
 
 Sin Docker en Windows: ver [docs/desarrollo.md](docs/desarrollo.md#opción-c-windows-sin-docker).
 

@@ -106,6 +106,14 @@ En Docker, `web` es nginx: sirve el SPA y hace proxy de `/api/*` y `/ws` hacia `
 | Navegador sin red              | Banner "Sin conexión — mostrando últimos datos"                        | 10    |
 | Dispositivo sin heartbeat 90 s | `devices.status = offline` y evento `devices:status`                   | 3     |
 
+Detalles del frontend (Fase 10):
+
+- **Dos banners distintos.** "Sin conexión" aparece cuando el navegador pierde la red. "Servidor no disponible" aparece cuando hay red pero la API no responde. Los dos indican la antigüedad de los datos mostrados ("actualizados hace 2 min").
+- **Sin reintentos inútiles.** Si la API no responde, las consultas fallan de inmediato y cada vista muestra su línea de error con "Reintentar". El banner consulta `/health` cada 5 s y, cuando la API vuelve, recarga todas las consultas.
+- **Error boundary por vista.** Si una vista falla al renderizar, se muestra un aviso en su lugar. La barra superior, la navegación y el timeline siguen funcionando, y al cambiar de vista el error se limpia.
+- **Teclado.** Las filas clicables (incidencias, reglas) se enfocan con Tab y se abren con Enter o Espacio.
+- **Pantallas angostas.** Por debajo de 1280 px el mapa oculta el panel lateral de incidencias para conservar el ancho del mapa.
+
 ## Plan de fases
 
 | Fase | Alcance                                                          | Estado    |
@@ -119,5 +127,5 @@ En Docker, `web` es nginx: sirve el SPA y hace proxy de `/api/*` y `/ws` hacia `
 | 7    | Panel de incidencias + timeline en vivo                          | Hecha     |
 | 8    | Accesibilidad: rutas y alternativas                              | Hecha     |
 | 9    | Mantenimiento, reglas, usuarios, logs                            | Hecha     |
-| 10   | Pulido visual, estados de error, offline                         | Pendiente |
+| 10   | Pulido visual, estados de error, offline                         | Hecha     |
 | 11   | E2E Playwright de los 6 escenarios + documentación final         | Pendiente |

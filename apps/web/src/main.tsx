@@ -10,7 +10,7 @@ import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import { RouterProvider } from 'react-router-dom';
 import { router } from './app/router';
-import { ApiError } from './lib/api';
+import { ApiError, UnreachableError } from './lib/api';
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -19,7 +19,12 @@ const queryClient = new QueryClient({
       // Keep showing the last data when the server drops (spec §6.3).
       gcTime: 30 * 60_000,
       refetchOnWindowFocus: false,
-      retry: (count, err) => !(err instanceof ApiError && err.status < 500) && count < 2,
+      // Server down: fail fast so views show their error line; ConnectionBanner probes
+      // /health and refetches everything once the API is back.
+      retry: (count, err) =>
+        !(err instanceof UnreachableError) &&
+        !(err instanceof ApiError && err.status < 500) &&
+        count < 2,
     },
   },
 });
