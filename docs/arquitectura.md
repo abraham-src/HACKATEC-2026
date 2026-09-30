@@ -72,6 +72,13 @@ En Docker, `web` es nginx: sirve el SPA y hace proxy de `/api/*` y `/ws` hacia `
 
 **Panel del simulador detrás del proxy.** El simulador no publica puerto, como pide la especificación. Su panel se sirve en `/simulator/` desde nginx o Vite, en el mismo origen que la web.
 
+**Frontend.** Usa React 18, React Router, TanStack Query para datos del servidor y Zustand para el estado de sesión, conexión y feed en vivo.
+
+- **Sesión.** El access token vive solo en memoria y el refresh viaja en una cookie httpOnly. Al recargar, `RequireAuth` restaura la sesión con `POST /auth/refresh`. Un 401 dispara un único refresh compartido: dos refresh simultáneos activarían la detección de reutilización.
+- **Tiempo real.** Hay un solo WebSocket (`LiveSocket`) que se reconecta con backoff y pide un token nuevo al reconectar. Cada mensaje actualiza la caché de TanStack Query en sitio (`applyLiveMessage`), así que métricas, tablas y medidores cambian sin recargar ni volver a consultar. El feed inferior omite heartbeats y lecturas rutinarias: solo muestra cambios de estado.
+- **Conectividad.** El cliente distingue "sin red", cuando `navigator.onLine` es falso, de "servidor caído", cuando `fetch` falla o el proxy responde 5xx sin sobre de error. En ambos casos TanStack Query conserva los últimos datos y un banner lo indica.
+- **Series para sparklines.** `GET /drains/:code/readings/series` agrega en Postgres con `date_bin`: 48 puntos por día en lugar de unas 17 000 lecturas crudas.
+
 ## Tolerancia a fallos (resumen)
 
 | Falla                          | Comportamiento                                                         | Fase  |
@@ -89,7 +96,7 @@ En Docker, `web` es nginx: sirve el SPA y hace proxy de `/api/*` y `/ws` hacia `
 | 2    | Auth JWT, roles, CRUD devices/incidents/accessibility, WebSocket | Hecha     |
 | 3    | Motor de reglas, ingesta, heartbeat monitor                      | Hecha     |
 | 4    | Simulador con SQLite store-and-forward y panel de control        | Hecha     |
-| 5    | Frontend: layout, login, dashboard                               | Pendiente |
+| 5    | Frontend: layout, login, dashboard                               | Hecha     |
 | 6    | Mapa MapLibre + edificios 3D + 12 capas                          | Pendiente |
 | 7    | Panel de incidencias + timeline en vivo                          | Pendiente |
 | 8    | Accesibilidad: rutas y alternativas                              | Pendiente |

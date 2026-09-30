@@ -52,6 +52,11 @@ const ReadingsBody = z.union([
   ReadingSchema,
 ]);
 
+const SeriesQuery = z.object({
+  hours: z.coerce.number().int().min(1).max(168).default(24),
+  bucket_min: z.coerce.number().int().min(1).max(1440).default(30),
+});
+
 const ReadingsQuery = z.object({
   from: isoDate.optional(),
   to: isoDate.optional(),
@@ -124,6 +129,20 @@ export function deviceRoutes(ctx: ServiceContext, guards: AuthGuards): FastifyPl
       if (from > to) throw badRequest('from debe ser anterior a to');
       return { data: await devices.listReadings(ctx, code, { from, to, limit: q.limit }) };
     });
+
+    app.get(
+      '/drains/:code/readings/series',
+      { preHandler: guards.requireUser(...STAFF) },
+      async (req) => {
+        const { code } = parse(deviceCodeParam, req.params);
+        const q = parse(SeriesQuery, req.query);
+        const to = new Date();
+        const from = new Date(to.getTime() - q.hours * 3600_000);
+        return {
+          data: await devices.readingSeries(ctx, code, { from, to, bucketMinutes: q.bucket_min }),
+        };
+      },
+    );
 
     app.post(
       '/drains/:code/readings',

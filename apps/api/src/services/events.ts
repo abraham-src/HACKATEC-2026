@@ -193,7 +193,8 @@ async function upsertCameraIncident(
         type,
         priority,
         confidence: input.confidence,
-        description: `${CAMERA_LABEL[input.eventType]} detectada por ${camera.deviceCode}`,
+        // Gender-neutral phrasing ("Accidente vial", "Acumulación de agua", ...).
+        description: `${CAMERA_LABEL[input.eventType]} · detección de ${camera.deviceCode}`,
         latitude: camera.latitude,
         longitude: camera.longitude,
         deviceId: camera.id,

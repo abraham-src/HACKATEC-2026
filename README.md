@@ -4,7 +4,7 @@ Sistema Inteligente de Monitoreo Urbano para la Ciudad de México. Integra cáma
 
 Esta entrega funciona **solo con datos simulados**: no requiere hardware ni el servicio de IA real.
 
-> **Estado:** Fase 3 de 11. La API está completa: login, roles, dispositivos, incidencias, accesibilidad, WebSocket, motor de reglas, ingesta store-and-forward, IA con mock y monitor de heartbeats. La interfaz web llega en la Fase 5. Plan completo en [docs/arquitectura.md](docs/arquitectura.md#plan-de-fases).
+> **Estado:** Fase 5 de 11. La API, el simulador y la interfaz web base están listos: login, dashboard en vivo con métricas, coladeras, incidencias y alertas. El mapa llega en la Fase 6. Plan completo en [docs/arquitectura.md](docs/arquitectura.md#plan-de-fases).
 
 Sin Docker en Windows: ver [docs/desarrollo.md](docs/desarrollo.md#opción-c-windows-sin-docker).
 

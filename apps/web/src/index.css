@@ -19,6 +19,26 @@
 
   --radius-sm: 2px;
   --radius-md: 3px;
+
+  /* Subtle entry for live items (spec §7.4: fade in, no exaggerated slides). */
+  --animate-fade-in: fade-in 400ms ease-out;
+  @keyframes fade-in {
+    from {
+      opacity: 0;
+    }
+    to {
+      opacity: 1;
+    }
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
 }
 
 @layer base {

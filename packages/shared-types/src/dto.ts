@@ -102,6 +102,16 @@ export interface SensorReadingDto {
   synced: boolean;
 }
 
+/** One bucket of GET /drains/:code/readings/series. */
+export interface ReadingSeriesPoint {
+  /** Bucket start, ISO-8601. */
+  t: string;
+  avg: number;
+  max: number;
+  /** Readings in the bucket. */
+  n: number;
+}
+
 export interface ReadingInput {
   value: number;
   unit?: string;

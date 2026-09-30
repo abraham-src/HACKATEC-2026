@@ -4,6 +4,7 @@ import type {
   DrainReadingEvent,
   GeoJsonFeatureCollection,
   ReadingIngestResult,
+  ReadingSeriesPoint,
   SensorReadingDto,
   WsMessage,
 } from '@simu/shared-types';
@@ -74,6 +75,26 @@ describe.skipIf(!hasTestDb)('devices, cameras, drains', () => {
     const readings = res.json<{ data: SensorReadingDto[] }>().data;
     expect(readings.length).toBeGreaterThanOrEqual(47);
     expect(readings.at(-1)?.value).toBe(12);
+  });
+
+  it('returns the most recent N readings (oldest → newest) when the window exceeds the limit', async () => {
+    const res = await get('/drains/DRAIN-003/readings?limit=5');
+    const readings = res.json<{ data: SensorReadingDto[] }>().data;
+    expect(readings).toHaveLength(5);
+    expect(readings.at(-1)?.value).toBe(12);
+    const times = readings.map((r) => Date.parse(r.recorded_at));
+    expect(times).toEqual([...times].sort((a, b) => a - b));
+  });
+
+  it('aggregates a 24 h series in Postgres for sparklines', async () => {
+    const res = await get('/drains/DRAIN-003/readings/series?hours=24&bucket_min=30');
+    expect(res.statusCode).toBe(200);
+    const series = res.json<{ data: ReadingSeriesPoint[] }>().data;
+    expect(series.length).toBeGreaterThanOrEqual(47);
+    expect(series.length).toBeLessThanOrEqual(49);
+    expect(series.at(-1)).toMatchObject({ avg: 12, max: 12 });
+    expect(series.every((p) => p.n >= 1 && p.max >= p.avg)).toBe(true);
+    expect((await get('/drains/DRAIN-003/readings/series?bucket_min=0')).statusCode).toBe(400);
   });
 
   it('changes device status and broadcasts devices:status', async () => {

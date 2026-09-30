@@ -9,6 +9,7 @@ import type {
   HeartbeatResult,
   JsonObject,
   ReadingIngestResult,
+  ReadingSeriesPoint,
   SensorReadingDto,
 } from '@simu/shared-types';
 import { drainStatusFromLevel } from '@simu/shared-utils';
@@ -220,10 +221,47 @@ export async function listReadings(
   range: { from: Date; to: Date; limit: number },
 ): Promise<SensorReadingDto[]> {
   const device = await findDeviceOrThrow(ctx, code, 'drain');
+  // The most recent `limit` readings of the window, returned oldest → newest.
   const rows = await ctx.prisma.sensorReading.findMany({
     where: { deviceId: device.id, recordedAt: { gte: range.from, lte: range.to } },
-    orderBy: { recordedAt: 'asc' },
+    orderBy: { recordedAt: 'desc' },
     take: range.limit,
   });
-  return rows.map((r) => toReadingDto(r, code));
+  return rows.reverse().map((r) => toReadingDto(r, code));
+}
+
+interface SeriesRow {
+  bucket: Date;
+  avg: number;
+  max: number;
+  n: number;
+}
+
+/**
+ * Time series aggregated in Postgres (date_bin): one point per bucket with the average
+ * and maximum level. A 24 h sparkline gets 48 points instead of ~17 000 raw readings.
+ */
+export async function readingSeries(
+  ctx: ServiceContext,
+  code: string,
+  range: { from: Date; to: Date; bucketMinutes: number },
+): Promise<ReadingSeriesPoint[]> {
+  const device = await findDeviceOrThrow(ctx, code, 'drain');
+  const rows = await ctx.prisma.$queryRaw<SeriesRow[]>`
+    SELECT date_bin(make_interval(mins => ${range.bucketMinutes}::int), recorded_at, TIMESTAMPTZ '2000-01-01') AS bucket,
+           AVG(value)::float8 AS avg,
+           MAX(value)::float8 AS max,
+           COUNT(*)::int AS n
+    FROM sensor_readings
+    WHERE device_id = ${device.id}::uuid
+      AND recorded_at >= ${range.from}
+      AND recorded_at <= ${range.to}
+    GROUP BY bucket
+    ORDER BY bucket ASC`;
+  return rows.map((r) => ({
+    t: r.bucket.toISOString(),
+    avg: Math.round(r.avg * 10) / 10,
+    max: Math.round(r.max * 10) / 10,
+    n: r.n,
+  }));
 }
