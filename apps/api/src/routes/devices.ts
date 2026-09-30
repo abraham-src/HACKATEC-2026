@@ -8,6 +8,7 @@ import { csvEnum, deviceCodeParam, isoDate, jsonObject, parse } from '../lib/val
 import type { AuthGuards } from '../plugins/auth.js';
 import type { ServiceContext } from '../services/context.js';
 import * as devices from '../services/devices.js';
+import * as events from '../services/events.js';
 
 /** Device internals are staff-only; citizens use the public accessibility/incident feeds. */
 const STAFF: RoleName[] = ['admin', 'operator', 'maintenance'];
@@ -40,7 +41,8 @@ const ReadingSchema = z.object({
     (d) => d.getTime() <= Date.now() + MAX_FUTURE_MS,
     'recorded_at no puede estar en el futuro',
   ),
-  synced: z.boolean().default(true),
+  /** Omitted → inferred from how late the reading arrived (store-and-forward). */
+  synced: z.boolean().optional(),
   metadata: jsonObject.default({}),
 });
 
@@ -140,14 +142,14 @@ export function deviceRoutes(ctx: ServiceContext, guards: AuthGuards): FastifyPl
           }
         }
 
-        const result = await devices.ingestDrainReadings(
+        const result = await events.ingestReadingsAndEvaluate(
           ctx,
           code,
           list.map((r) => ({
             value: r.value,
             unit: r.unit,
             recordedAt: r.recorded_at,
-            synced: r.synced,
+            synced: events.inferSynced(ctx, r.recorded_at, r.synced),
             metadata: r.metadata,
           })),
         );

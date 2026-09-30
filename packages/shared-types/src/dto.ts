@@ -1,5 +1,6 @@
 import type {
   AccessibilityPointType,
+  CameraEventType,
   AccessibilityStatus,
   DeviceStatus,
   DeviceType,
@@ -204,4 +205,104 @@ export interface RuleDto {
   enabled: boolean;
   sort_order: number;
   updated_at: string;
+}
+
+// ───────────────────────────── Device events (Phase 3) ─────────────────────────────
+
+/** Stored camera detection or weather report (GET /events). */
+export interface DeviceEventDto {
+  id: string;
+  device_code: string;
+  event_type: string;
+  confidence: number | null;
+  payload: JsonObject;
+  recorded_at: string;
+  received_at: string;
+  synced: boolean;
+}
+
+/** One item of POST /events/ingest (gateway store-and-forward batch). */
+export type IngestEvent =
+  | {
+      type: 'camera_event';
+      /** Camera code, e.g. CAM-001 (spec payload name). */
+      device_id: string;
+      event_type: CameraEventType;
+      confidence: number;
+      location_id?: string;
+      priority?: Uppercase<IncidentPriority>;
+      recorded_at?: string;
+      synced?: boolean;
+    }
+  | {
+      type: 'drain_reading';
+      device_code: string;
+      value: number;
+      unit?: string;
+      recorded_at: string;
+      synced?: boolean;
+    }
+  | {
+      type: 'weather';
+      device_code: string;
+      raining: boolean;
+      intensity_mm_h?: number;
+      zone?: string;
+      recorded_at?: string;
+      synced?: boolean;
+    }
+  | {
+      type: 'heartbeat';
+      device_code: string;
+      status?: 'online' | 'degraded';
+      recorded_at?: string;
+    };
+
+export type IngestItemStatus = 'accepted' | 'duplicate' | 'stale' | 'rejected';
+
+export interface IngestResult {
+  received: number;
+  accepted: number;
+  duplicates: number;
+  stale: number;
+  rejected: number;
+  results: Array<{ index: number; type: string; status: IngestItemStatus; error?: string }>;
+}
+
+export interface CameraEventResult {
+  status: 'accepted' | 'duplicate';
+  event_id: string | null;
+  /** Incident created or refreshed by this detection, if any. */
+  incident_id: string | null;
+}
+
+export interface WeatherDto {
+  raining: boolean;
+  intensity_mm_h: number | null;
+  zone: string | null;
+  device_code: string;
+  recorded_at: string;
+}
+
+export interface AnalyzeRequest {
+  device_id: string;
+  location_id?: string;
+  frame_ref?: string;
+  /** Force a class (demo scenarios). */
+  hint?: CameraEventType;
+  /** Also process the detection as a camera event (default true). */
+  ingest?: boolean;
+}
+
+export interface AnalyzeResponse {
+  detection: {
+    device_id: string;
+    event_type: CameraEventType;
+    confidence: number;
+    location_id: string | null;
+    priority: Uppercase<IncidentPriority>;
+    analyzed_at: string;
+    backend: 'ai-service' | 'mock' | 'mock-fallback';
+  };
+  ingested: CameraEventResult | null;
 }

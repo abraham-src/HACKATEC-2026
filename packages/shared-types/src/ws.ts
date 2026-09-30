@@ -1,4 +1,10 @@
-import type { DeviceStatus, DrainStatus, RoleName } from './enums.js';
+import type {
+  CameraEventType,
+  DeviceStatus,
+  DrainStatus,
+  IncidentPriority,
+  RoleName,
+} from './enums.js';
 
 export const WS_CHANNELS = [
   'devices:status',
@@ -62,4 +68,32 @@ export interface DrainReadingEvent {
   drain_status: DrainStatus;
   /** >1 when a store-and-forward batch was delivered. */
   batch_size: number;
+}
+
+/** camera-events channel: a stored camera detection. */
+export interface CameraEventMessage {
+  device_code: string;
+  event_type: CameraEventType;
+  confidence: number;
+  location_id: string | null;
+  priority: Uppercase<IncidentPriority>;
+  recorded_at: string;
+  synced: boolean;
+  /** Incident created or refreshed by this detection (null if below threshold or stale). */
+  incident_id: string | null;
+}
+
+/** alerts channel: raised by the rules engine or by a high-priority detection. */
+export interface AlertEvent {
+  incident_id: string;
+  device_code: string | null;
+  priority: IncidentPriority;
+  /** Short label such as "ALERTA", "RIESGO ALTO", "RIESGO CRÍTICO". */
+  label: string;
+  message: string;
+  kind: 'created' | 'escalated';
+  source: 'rules_engine' | 'camera';
+  rule_name: string | null;
+  /** Facts that made the rule match (drain level, rain, camera detection). */
+  facts: Record<string, unknown>;
 }

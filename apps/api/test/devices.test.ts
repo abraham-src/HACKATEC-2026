@@ -149,8 +149,12 @@ describe.skipIf(!hasTestDb)('devices, cameras, drains', () => {
   });
 
   describe('drain readings ingest', () => {
-    // "Now" is always newer than the seed's last reading, so the first post updates the drain.
-    const base = Date.now();
+    // Set after the suite's seed ran: newer than the seed's last reading, so the first post
+    // updates the drain.
+    let base = 0;
+    beforeAll(() => {
+      base = Date.now() + 1000;
+    });
     const at = (offsetMs: number) => new Date(base + offsetMs).toISOString();
     const post = (payload: InjectOptions['payload']) =>
       t.app.inject({

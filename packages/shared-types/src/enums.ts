@@ -33,6 +33,14 @@ export type IncidentType = (typeof INCIDENT_TYPES)[number];
 export const INCIDENT_PRIORITIES = ['low', 'medium', 'high', 'critical'] as const;
 export type IncidentPriority = (typeof INCIDENT_PRIORITIES)[number];
 
+/** Severity rank (higher = more severe). Used to decide escalations. */
+export const PRIORITY_RANK: Record<IncidentPriority, number> = {
+  low: 0,
+  medium: 1,
+  high: 2,
+  critical: 3,
+};
+
 export const INCIDENT_STATUSES = [
   'pending',
   'validated',
@@ -69,6 +77,19 @@ export const CAMERA_EVENT_TYPES = [
   'ACCESSIBILITY_BLOCK',
 ] as const;
 export type CameraEventType = (typeof CAMERA_EVENT_TYPES)[number];
+
+/** Camera detection → incident type. */
+export const CAMERA_EVENT_TO_INCIDENT: Record<CameraEventType, IncidentType> = {
+  WATER_ACCUMULATION: 'water_accumulation',
+  DRAIN_OBSTRUCTION: 'drain_obstruction',
+  ACCIDENT: 'accident',
+  OBSTACLE: 'obstacle',
+  INFRASTRUCTURE_FAILURE: 'infrastructure_failure',
+  ACCESSIBILITY_BLOCK: 'accessibility_block',
+};
+
+/** device_events.event_type used for weather reports. */
+export const WEATHER_EVENT_TYPE = 'WEATHER';
 
 /** Operational zones used by camera payloads (`location_id`). */
 export const ZONE_CODES = ['ZONE-001', 'ZONE-002', 'ZONE-003', 'ZONE-004'] as const;

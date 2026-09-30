@@ -123,6 +123,23 @@ Umbrales (`packages/shared-utils/src/drain.ts`): `normal` < 50, `caution` 50–8
 
 Índice **único** `(device_id, recorded_at)`: hace idempotentes los reintentos del gateway.
 
+### device_events
+
+Agregada en la Fase 3, migración `20260929180000_device_events`. Guarda las detecciones de cámara y los reportes de clima. Alimenta `GET /events` y los hechos del motor de reglas.
+
+| Columna     | Tipo              | Notas                                                                         |
+| ----------- | ----------------- | ----------------------------------------------------------------------------- |
+| id          | bigserial PK      |                                                                               |
+| device_id   | uuid FK → devices | CASCADE                                                                       |
+| event_type  | text              | `WATER_ACCUMULATION`, `OBSTACLE`, … o `WEATHER`                               |
+| confidence  | numeric(4,3)      | CHECK 0–1. Solo en detecciones                                                |
+| payload     | jsonb             | cámara: `location_id`, `priority`. Clima: `raining`, `intensity_mm_h`, `zone` |
+| recorded_at | timestamptz       | cuándo ocurrió                                                                |
+| received_at | timestamptz       | cuándo llegó                                                                  |
+| synced      | boolean           | `false` si llegó tarde por store-and-forward                                  |
+
+El índice **único** `(device_id, event_type, recorded_at)` hace idempotentes los reenvíos. También hay índices por `recorded_at DESC` y por `(event_type, recorded_at DESC)`, que usa la búsqueda de "agua detectada en la ventana".
+
 ### heartbeats
 
 | Columna     | Tipo              | Notas                                  |
@@ -258,10 +275,12 @@ CAM-001 y DRAIN-001 están en la misma esquina, Álvaro Obregón y Orizaba. Así
 
 ## Desviaciones respecto a la especificación
 
-| Cambio                                                | Motivo                                                                                |
-| ----------------------------------------------------- | ------------------------------------------------------------------------------------- |
-| Se sembraron 11 dispositivos en lugar de 8            | La especificación dice "8" pero enumera 4 + 4 + 2 + 1 = 11. Se siguió la enumeración. |
-| `rules.sort_order`, `rules.created_at/updated_at`     | "Evaluar en orden" requiere un orden explícito.                                       |
-| `incidents.updated_at`                                | Necesario para `PATCH` y para ordenar por última actividad.                           |
-| Único `(device_id, recorded_at)` en `sensor_readings` | Idempotencia de store-and-forward.                                                    |
-| `incidents.confidence` con default 1                  | Los reportes manuales no tienen confianza de IA.                                      |
+| Cambio                                                | Motivo                                                                                                                           |
+| ----------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------- |
+| Se sembraron 11 dispositivos en lugar de 8            | La especificación dice "8" pero enumera 4 + 4 + 2 + 1 = 11. Se siguió la enumeración.                                            |
+| `rules.sort_order`, `rules.created_at/updated_at`     | "Evaluar en orden" requiere un orden explícito.                                                                                  |
+| `incidents.updated_at`                                | Necesario para `PATCH` y para ordenar por última actividad.                                                                      |
+| Único `(device_id, recorded_at)` en `sensor_readings` | Idempotencia de store-and-forward.                                                                                               |
+| `incidents.confidence` con default 1                  | Los reportes manuales no tienen confianza de IA.                                                                                 |
+| Tabla `refresh_tokens`                                | Revocar sesiones al cerrar sesión y detectar tokens robados.                                                                     |
+| Tabla `device_events`                                 | La especificación pide `GET /events` y la regla "cámara detecta agua", pero no define dónde guardar las detecciones ni el clima. |

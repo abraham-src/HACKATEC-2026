@@ -40,6 +40,20 @@ export const EnvSchema = z.object({
   /** Set to true when the web is served over HTTPS. */
   COOKIE_SECURE: booleanString,
   LOGIN_RATE_LIMIT_MAX: z.coerce.number().int().min(1).default(10),
+  /** Seconds without heartbeat before a device is marked offline (spec §6.2: 90 s). */
+  HEARTBEAT_TIMEOUT_S: z.coerce.number().int().min(5).default(90),
+  /** How often the offline monitor runs. */
+  HEARTBEAT_CHECK_INTERVAL_S: z.coerce.number().int().min(1).default(10),
+  /** Camera detections below this confidence are stored but create no incident. */
+  CAMERA_MIN_CONFIDENCE: z.coerce.number().min(0).max(1).default(0.6),
+  /** A repeated detection (same camera + type) within this window refreshes the open incident. */
+  CAMERA_DEDUP_MINUTES: z.coerce.number().int().min(1).default(15),
+  /** Detections older than this (late store-and-forward) are stored but create no incident. */
+  CAMERA_EVENT_MAX_AGE_MIN: z.coerce.number().int().min(1).default(30),
+  /** The latest weather report is considered current for this long. */
+  WEATHER_MAX_AGE_MIN: z.coerce.number().int().min(1).default(180),
+  /** When the sender omits `synced`, data older than this is flagged synced=false. */
+  SYNC_LATE_THRESHOLD_S: z.coerce.number().int().min(1).default(60),
   AI_SERVICE_URL: z.preprocess(emptyToUndefined, z.string().url().optional()),
 });
 

@@ -3,7 +3,10 @@ import type { TokenResponse, WsControlMessage, WsMessage } from '@simu/shared-ty
 import type { FastifyInstance } from 'fastify';
 import type { WebSocket } from 'ws';
 import { buildApp } from '../src/app.js';
-import { loadConfig } from '../src/config.js';
+import { createTokenService } from '../src/auth/tokens.js';
+import { loadConfig, type Config } from '../src/config.js';
+import type { ServiceContext } from '../src/services/context.js';
+import { resetTestDatabase } from './db.js';
 
 export const TEST_DB = process.env.TEST_DATABASE_URL;
 export const hasTestDb = Boolean(TEST_DB);
@@ -21,11 +24,14 @@ export const DEVICE_KEY = 'test-device-key-0123456789';
 export interface TestContext {
   app: FastifyInstance;
   prisma: PrismaClient;
+  config: Config;
   close(): Promise<void>;
 }
 
-export async function createTestApp(): Promise<TestContext> {
+/** Resets the test database to the seed state and builds an app bound to it. */
+export async function createTestApp(overrides: Record<string, string> = {}): Promise<TestContext> {
   if (!TEST_DB) throw new Error('TEST_DATABASE_URL requerido');
+  await resetTestDatabase(TEST_DB);
   const config = loadConfig({
     ...process.env,
     NODE_ENV: 'test',
@@ -33,6 +39,8 @@ export async function createTestApp(): Promise<TestContext> {
     DATABASE_URL: TEST_DB,
     DEVICE_INGEST_KEY: DEVICE_KEY,
     LOGIN_RATE_LIMIT_MAX: '1000',
+    AI_SERVICE_URL: '',
+    ...overrides,
   });
   const prisma = new PrismaClient({ datasourceUrl: TEST_DB });
   const app = await buildApp({ config, prisma });
@@ -40,11 +48,34 @@ export async function createTestApp(): Promise<TestContext> {
   return {
     app,
     prisma,
+    config,
     async close() {
       await app.close();
       await prisma.$disconnect();
     },
   };
+}
+
+export interface RecordedMessage {
+  channel: string;
+  event: string;
+  data: unknown;
+}
+
+/** A ServiceContext whose publisher records messages (for calling services directly). */
+export function serviceContext(t: TestContext): {
+  ctx: ServiceContext;
+  published: RecordedMessage[];
+} {
+  const published: RecordedMessage[] = [];
+  const ctx: ServiceContext = {
+    config: t.config,
+    prisma: t.prisma,
+    tokens: createTokenService(t.config),
+    log: t.app.log,
+    hub: { publish: (channel, event, data) => void published.push({ channel, event, data }) },
+  };
+  return { ctx, published };
 }
 
 export async function login(app: FastifyInstance, role: DemoRole): Promise<TokenResponse> {

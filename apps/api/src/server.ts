@@ -3,7 +3,7 @@ import { loadConfig } from './config.js';
 import { prisma } from './db.js';
 
 const config = loadConfig();
-const app = await buildApp({ config, prisma });
+const app = await buildApp({ config, prisma, startJobs: true });
 
 let shuttingDown = false;
 async function shutdown(signal: NodeJS.Signals): Promise<void> {

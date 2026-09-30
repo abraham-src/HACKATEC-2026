@@ -191,6 +191,7 @@ model Device {
   readings   SensorReading[]
   incidents  Incident[]
   heartbeats Heartbeat[]
+  events     DeviceEvent[]
 
   @@index([type])
   @@index([status])
@@ -241,6 +242,27 @@ model SensorReading {
 
   @@unique([deviceId, recordedAt])
   @@map("sensor_readings")
+}
+
+/// Discrete events reported by devices: camera detections (WATER_ACCUMULATION, OBSTACLE, ...)
+/// and weather reports (WEATHER). (device_id, event_type, recorded_at) is unique so that
+/// store-and-forward retries are idempotent. Feeds GET /events and the rules engine.
+model DeviceEvent {
+  id         BigInt   @id @default(autoincrement())
+  deviceId   String   @map("device_id") @db.Uuid
+  device     Device   @relation(fields: [deviceId], references: [id], onDelete: Cascade)
+  eventType  String   @map("event_type")
+  /// 0–1, camera detections only (CHECK constraint in SQL)
+  confidence Decimal? @db.Decimal(4, 3)
+  payload    Json     @default("{}")
+  recordedAt DateTime @map("recorded_at") @db.Timestamptz(3)
+  receivedAt DateTime @default(now()) @map("received_at") @db.Timestamptz(3)
+  synced     Boolean  @default(true)
+
+  @@unique([deviceId, eventType, recordedAt])
+  @@index([recordedAt(sort: Desc)])
+  @@index([eventType, recordedAt(sort: Desc)])
+  @@map("device_events")
 }
 
 model Heartbeat {

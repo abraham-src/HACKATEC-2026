@@ -180,6 +180,113 @@ Para mantenimiento: PENDIENTE = `assigned`, EN ATENCIÓN = `in_progress`, RESUEL
 | GET    | `/rules`     | Ordenadas por `sort_order`                                                                                                                               |
 | PATCH  | `/rules/:id` | `{ name?, description?, enabled?, sort_order?, conditions?, action? }`. El DSL se valida, ver [modelo-datos.md](modelo-datos.md#dsl-del-motor-de-reglas) |
 
+Los cambios aplican desde la siguiente evaluación. El motor lee las reglas en cada evaluación y no guarda caché.
+
+### Motor de reglas
+
+No tiene endpoint propio. Se ejecuta solo en tres momentos:
+
+| Disparador                                                                      | Qué evalúa                                                    |
+| ------------------------------------------------------------------------------- | ------------------------------------------------------------- |
+| Lectura de coladera (`POST /drains/:code/readings` o `drain_reading` en ingest) | Esa coladera                                                  |
+| Detección `WATER_ACCUMULATION` de una cámara                                    | Las coladeras dentro del radio de la regla, 250 m por defecto |
+| Reporte de clima (`weather`)                                                    | Todas las coladeras                                           |
+
+Hechos disponibles:
+
+| Hecho                     | Valor                                                                                                                              |
+| ------------------------- | ---------------------------------------------------------------------------------------------------------------------------------- |
+| `drain.obstruction_level` | Nivel actual de la coladera                                                                                                        |
+| `weather.raining`         | Último reporte de clima de las últimas 3 h, de la zona de la coladera o sin zona. `false` si no hay                                |
+| `camera.water_detected`   | Existe una detección de agua con confianza ≥ 0.6 dentro de `window.radius_m` y `window.seconds`. La distancia es real, con PostGIS |
+| `camera.confidence`       | Confianza máxima de esas detecciones                                                                                               |
+
+Aplicación de la regla ganadora, que es la más severa entre las que coinciden:
+
+- **Sin incidencia activa del motor para esa coladera.** Se crea una. Emite `incidents:created` y `alerts:created`.
+- **Hay una activa con menor prioridad.** Se escala la misma incidencia: prioridad, tipo y descripción. Emite `incidents:priority_raised` y `alerts:escalated`.
+- **Hay una activa con igual o mayor prioridad.** No pasa nada. Así no se duplican incidencias ni se repiten alertas.
+- **Nunca baja la prioridad sola.** Cerrar la incidencia es decisión de una persona. Después de resolverla, una nueva condición abre otra.
+
+Cada creación o escalamiento queda en la bitácora con la regla, los hechos y el disparador.
+
+### Eventos, clima e IA
+
+| Método | Ruta                                                  | Roles                           | Notas                                                              |
+| ------ | ----------------------------------------------------- | ------------------------------- | ------------------------------------------------------------------ |
+| POST   | `/events/ingest`                                      | `x-device-key`, admin, operator | Lote de hasta 500 eventos. Ver abajo                               |
+| GET    | `/events?from=&to=&device_id=&type=&page=&page_size=` | staff                           | Detecciones de cámara y clima guardados. Por defecto, últimas 24 h |
+| GET    | `/weather`                                            | todos                           | Último reporte de clima vigente, o `null`                          |
+| POST   | `/ai/analyze`                                         | `x-device-key`, admin, operator | `{ device_id, location_id?, frame_ref?, hint?, ingest? }`          |
+
+#### `POST /events/ingest`: store-and-forward del gateway
+
+```json
+{
+  "events": [
+    {
+      "type": "drain_reading",
+      "device_code": "DRAIN-001",
+      "value": 78,
+      "recorded_at": "2026-09-29T15:30:00Z"
+    },
+    {
+      "type": "camera_event",
+      "device_id": "CAM-001",
+      "event_type": "WATER_ACCUMULATION",
+      "confidence": 0.92,
+      "location_id": "ZONE-001",
+      "priority": "HIGH",
+      "recorded_at": "2026-09-29T15:31:00Z"
+    },
+    {
+      "type": "weather",
+      "device_code": "GW-001",
+      "raining": true,
+      "intensity_mm_h": 22,
+      "zone": "ZONE-001"
+    },
+    { "type": "heartbeat", "device_code": "GW-001", "status": "online" }
+  ]
+}
+```
+
+`camera_event` usa exactamente el payload del documento, con `device_id` como código de cámara. Respuesta:
+
+```json
+{
+  "received": 4,
+  "accepted": 4,
+  "duplicates": 0,
+  "stale": 0,
+  "rejected": 0,
+  "results": [{ "index": 0, "type": "drain_reading", "status": "accepted" }, "…"]
+}
+```
+
+Reglas de procesamiento:
+
+- **Orden.** Los eventos se procesan en orden cronológico de `recorded_at`, no en el orden del arreglo.
+- **Resultado por evento.** Uno inválido, por ejemplo un dispositivo inexistente, queda `rejected` sin bloquear a los demás. Un payload mal formado responde 400 completo.
+- **Idempotencia.** Reenviar el mismo lote no duplica nada: responde `duplicate`. Las lecturas se deduplican por dispositivo y `recorded_at`. Las detecciones y el clima, por dispositivo, tipo y `recorded_at`.
+- **Datos atrasados.** Si no se envía `synced`, todo lo que llega con más de 60 s de retraso se guarda con `synced: false`.
+- **Heartbeats viejos.** Si tienen más de 90 s, responden `stale`: no prueban que el dispositivo siga vivo.
+
+#### Detecciones de cámara
+
+- Una confianza menor a 0.6 se guarda, pero no crea incidencia.
+- Una detección de más de 30 min, llegada por store-and-forward, se guarda pero no crea incidencia.
+- Si la misma cámara repite el mismo tipo dentro de 15 min, se refresca la incidencia abierta. Sube la confianza, queda un evento `redetected` y no se crea otra.
+- Las detecciones con prioridad alta o crítica emiten `alerts:created`.
+
+#### `/ai/analyze`
+
+Si `AI_SERVICE_URL` está definido, llama al servicio de Python. Si no está definido o no responde en 5 s, usa el mock interno. El campo `detection.backend` indica cuál respondió: `ai-service`, `mock` o `mock-fallback`. Con `ingest: true`, que es el valor por defecto, la detección se procesa como un evento de cámara. `hint` fuerza la clase para las demos. Solo existen clases de infraestructura: el sistema nunca detecta personas, rostros ni placas.
+
+### Monitor de heartbeats
+
+Cada 10 s, la API marca `offline` los dispositivos `online` o `degraded` sin heartbeat en 90 s. Emite `devices:status` con `reason: "heartbeat_timeout"`. No toca los dispositivos en `maintenance`. El siguiente heartbeat los regresa a `online`. Los tiempos se ajustan con `HEARTBEAT_TIMEOUT_S` y `HEARTBEAT_CHECK_INTERVAL_S`.
+
 ## WebSocket
 
 ```text
@@ -224,22 +331,20 @@ Mensajes de datos. Siempre traen `event` y nunca `type`:
 }
 ```
 
-| Canal            | Eventos                                | Datos                                                    | Roles |
-| ---------------- | -------------------------------------- | -------------------------------------------------------- | ----- |
-| `devices:status` | `status_changed`                       | `DeviceStatusEvent`                                      | staff |
-| `heartbeats`     | `received`                             | `HeartbeatEvent`                                         | staff |
-| `drain-readings` | `reading`                              | `DrainReadingEvent`                                      | staff |
-| `incidents`      | `created`, `updated`, `status_changed` | `IncidentDto`. `status_changed` agrega `previous_status` | todos |
-| `camera-events`  | Fase 3                                 |                                                          | staff |
-| `alerts`         | Fase 3                                 |                                                          | todos |
+| Canal            | Eventos                                                   | Datos                                                                                                   | Roles |
+| ---------------- | --------------------------------------------------------- | ------------------------------------------------------------------------------------------------------- | ----- |
+| `devices:status` | `status_changed`                                          | `DeviceStatusEvent`                                                                                     | staff |
+| `heartbeats`     | `received`                                                | `HeartbeatEvent`                                                                                        | staff |
+| `drain-readings` | `reading`                                                 | `DrainReadingEvent`                                                                                     | staff |
+| `incidents`      | `created`, `updated`, `status_changed`, `priority_raised` | `IncidentDto`. `status_changed` agrega `previous_status` y `priority_raised` agrega `previous_priority` | todos |
+| `camera-events`  | `detected`                                                | `CameraEventMessage`                                                                                    | staff |
+| `alerts`         | `created`, `escalated`                                    | `AlertEvent`, con `label`, `priority`, `message`, `rule_name` y `facts`                                 | todos |
 
 "staff" es admin, operator y maintenance. El servidor envía un ping cada 30 s y cierra las conexiones que no responden.
 
 ## Pendiente en fases siguientes
 
-| Endpoint                                                                                     | Fase |
-| -------------------------------------------------------------------------------------------- | ---- |
-| `GET /events`, `POST /events/ingest`, `POST /ai/analyze`, canales `camera-events` y `alerts` | 3    |
-| Marcado automático `offline` tras 90 s sin heartbeat                                         | 3    |
-| `POST /accessibility/routes/alternative`                                                     | 8    |
-| CRUD de usuarios                                                                             | 9    |
+| Endpoint                                 | Fase |
+| ---------------------------------------- | ---- |
+| `POST /accessibility/routes/alternative` | 8    |
+| CRUD de usuarios                         | 9    |

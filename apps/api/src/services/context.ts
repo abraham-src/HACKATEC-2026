@@ -1,4 +1,5 @@
 import type { PrismaClient } from '@prisma/client';
+import type { FastifyBaseLogger } from 'fastify';
 import type { TokenService } from '../auth/tokens.js';
 import type { Config } from '../config.js';
 import type { Publisher } from '../ws/hub.js';
@@ -9,4 +10,5 @@ export interface ServiceContext {
   prisma: PrismaClient;
   tokens: TokenService;
   hub: Publisher;
+  log: FastifyBaseLogger;
 }

@@ -58,6 +58,14 @@ En Docker, `web` es nginx: sirve el SPA y hace proxy de `/api/*` y `/ws` hacia `
 
 **Filtro bbox sin SQL crudo.** Para puntos, un rango de latitud y longitud equivale exactamente a `ST_MakeEnvelope`, así que se resuelve con Prisma. PostGIS se reserva para distancias reales (`ST_DWithin` sobre `geography`) y para leer geometrías.
 
+**Motor de reglas puro más adaptador.** `domain/rules-engine.ts` evalúa las reglas contra un _resolver_ de hechos y no conoce la base de datos. `services/rules-engine.ts` resuelve los hechos con Prisma y PostGIS y aplica la acción. Así la lógica de reglas se prueba con hechos falsos, y el acceso a datos se prueba con los escenarios reales de la demo.
+
+**Una incidencia por coladera que escala.** El motor no crea una incidencia por regla. Mantiene una sola incidencia activa por coladera y la escala: ALERTA, luego RIESGO ALTO, luego RIESGO CRÍTICO. Así el operador ve un solo caso con su historia completa en la bitácora, y no tres alertas sueltas. Nunca baja la prioridad automáticamente.
+
+**Bloqueo por coladera.** Dos lecturas simultáneas de la misma coladera podrían crear dos incidencias. Cada evaluación toma `pg_advisory_xact_lock(hashtext(device_id))` dentro de su transacción. Las evaluaciones de coladeras distintas no se bloquean entre sí.
+
+**Monitor de heartbeats en la API.** Es un `setInterval` en el proceso de la API, que no se superpone consigo mismo. Su `UPDATE` vuelve a comprobar el corte, así que un heartbeat que llega durante el barrido gana. Con varias instancias de la API bastaría con que una sola lo ejecute, o con un lock de Postgres.
+
 ## Tolerancia a fallos (resumen)
 
 | Falla                          | Comportamiento                                                         | Fase  |
@@ -73,7 +81,7 @@ En Docker, `web` es nginx: sirve el SPA y hace proxy de `/api/*` y `/ws` hacia `
 | ---- | ---------------------------------------------------------------- | --------- |
 | 1    | Monorepo, Docker Compose, PostGIS, Prisma, esquema, seeds        | Hecha     |
 | 2    | Auth JWT, roles, CRUD devices/incidents/accessibility, WebSocket | Hecha     |
-| 3    | Motor de reglas, ingesta, heartbeat monitor                      | Pendiente |
+| 3    | Motor de reglas, ingesta, heartbeat monitor                      | Hecha     |
 | 4    | Simulador con SQLite store-and-forward y panel de control        | Pendiente |
 | 5    | Frontend: layout, login, dashboard                               | Pendiente |
 | 6    | Mapa MapLibre + edificios 3D + 12 capas                          | Pendiente |
